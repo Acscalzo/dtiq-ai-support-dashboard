@@ -1,0 +1,157 @@
+'use client';
+
+import { Search, Bell, X } from 'lucide-react';
+import { getClientBranding } from '@/config/branding';
+import { useState, useEffect, useRef } from 'react';
+import { SearchResults } from '@/components';
+import { SearchResponse, ApiResponse } from '@/types/api';
+import { UserMenu } from '@/components/auth/UserMenu';
+import { authenticatedFetch } from '@/lib/api/client';
+
+export function Header() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResponse>({
+    tickets: [],
+    documentation: [],
+    totalResults: 0,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const branding = getClientBranding();
+
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim().length > 0) {
+        performSearch(searchQuery);
+      } else {
+        setSearchResults({
+          tickets: [],
+          documentation: [],
+          totalResults: 0,
+        });
+        setShowResults(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const performSearch = async (query: string) => {
+    setIsLoading(true);
+    setShowResults(true);
+
+    try {
+      const response = await authenticatedFetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const data: ApiResponse<SearchResponse> = await response.json();
+
+      if (data.success && data.data) {
+        setSearchResults(data.data);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSearchResults({
+      tickets: [],
+      documentation: [],
+      totalResults: 0,
+    });
+    setShowResults(false);
+  };
+
+  return (
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 transition-colors">
+      <div className="px-6 py-4">
+        <div className="flex items-center justify-between gap-6">
+          {/* Logo/Company Name */}
+          <div className="flex items-center gap-3">
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt={branding.companyName}
+                className="h-8 w-auto"
+              />
+            ) : (
+              <div className="h-8 px-3 flex items-center justify-center rounded font-bold text-white bg-primary">
+                {branding.companyName.charAt(0)}
+              </div>
+            )}
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              {branding.companyName}
+            </h1>
+          </div>
+
+          {/* Search Bar */}
+          <div className="flex-1 max-w-2xl" ref={searchRef}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (searchQuery.trim().length > 0) {
+                    setShowResults(true);
+                  }
+                }}
+                placeholder="Search tickets, documentation..."
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                </button>
+              )}
+
+              {/* Search Results Dropdown */}
+              {showResults && (
+                <SearchResults
+                  results={searchResults}
+                  isLoading={isLoading}
+                  query={searchQuery}
+                  onClose={() => setShowResults(false)}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+
+            <UserMenu />
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}

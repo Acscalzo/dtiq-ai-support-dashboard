@@ -1,0 +1,118 @@
+// This is your Prisma schema file for a single-company AI support dashboard
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Ticket {
+  id             String        @id @default(cuid())
+  title          String
+  description    String
+  status         String        // "open", "in_progress", "resolved", "closed"
+  priority       String        // "high", "medium", "low"
+  category       String
+  customerId     String
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  assignedToId   String?
+  assignedTo     Agent?        @relation(fields: [assignedToId], references: [id])
+  aiResolved     Boolean       @default(false)
+  sentimentScore Float?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  resolvedAt     DateTime?
+  interactions   Interaction[]
+  insights       Insight[]
+
+  @@index([customerId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  companyName String?
+  phone       String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  tickets     Ticket[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model Agent {
+  id                String        @id @default(cuid())
+  name              String
+  email             String        @unique
+  role              String
+  avgQualityScore   Float?
+  totalTickets      Int           @default(0)
+  createdAt         DateTime      @default(now())
+  tickets           Ticket[]
+  interactions      Interaction[]
+
+  @@index([email])
+}
+
+model Interaction {
+  id           String   @id @default(cuid())
+  ticketId     String
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type         String   // "call", "chat", "email"
+  content      String
+  agentId      String?
+  agent        Agent?   @relation(fields: [agentId], references: [id])
+  sentiment    String?
+  qualityScore Float?
+  aiSummary    String?
+  createdAt    DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+model Documentation {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String
+  aiEnabled Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([aiEnabled])
+}
+
+model Insight {
+  id              String   @id @default(cuid())
+  ticketId        String?
+  ticket          Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type            String   // "upsell", "training_needed", "recurring_issue"
+  description     String
+  confidenceScore Float
+  status          String   @default("pending")
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  routedAt        DateTime?
+
+  @@index([ticketId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
