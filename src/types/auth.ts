@@ -8,6 +8,8 @@ export interface UserProfile {
   createdAt: string;
   updatedAt: string;
   photoURL?: string | null;
+  phone?: string | null;
+  title?: string | null;
 }
 
 export interface AuthUser {

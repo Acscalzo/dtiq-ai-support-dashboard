@@ -7,6 +7,9 @@ import { SearchResults } from '@/components';
 import { SearchResponse, ApiResponse } from '@/types/api';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { authenticatedFetch } from '@/lib/api/client';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationBadge } from '@/components/notifications/NotificationBadge';
+import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,8 +20,19 @@ export function Header() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const branding = getClientBranding();
+
+  // Notifications hook
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications({ limitCount: 20 });
 
   // Debounced search
   useEffect(() => {
@@ -78,6 +92,10 @@ export function Header() {
     setShowResults(false);
   };
 
+  const handleNotificationClick = () => {
+    setShowNotifications(!showNotifications);
+  };
+
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 transition-colors">
       <div className="px-6 py-4">
@@ -88,7 +106,7 @@ export function Header() {
               <img
                 src={branding.logoUrl}
                 alt={branding.companyName}
-                className="h-8 w-auto"
+                className="h-8 w-auto ml-4"
               />
             ) : (
               <div className="h-8 px-3 flex items-center justify-center rounded font-bold text-white bg-primary">
@@ -96,7 +114,7 @@ export function Header() {
               </div>
             )}
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              {branding.companyName}
+              Dashboard
             </h1>
           </div>
 
@@ -140,13 +158,28 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <button
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
-              aria-label="Notifications"
-            >
-              <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Notifications */}
+            <div className="relative" ref={notificationsRef}>
+              <button
+                onClick={handleNotificationClick}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <NotificationBadge count={unreadCount} />
+              </button>
+
+              {/* Notification Panel Dropdown */}
+              {showNotifications && (
+                <NotificationPanel
+                  notifications={notifications}
+                  loading={notificationsLoading}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  onClose={() => setShowNotifications(false)}
+                />
+              )}
+            </div>
 
             <UserMenu />
           </div>

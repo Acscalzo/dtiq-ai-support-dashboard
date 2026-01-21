@@ -1,18 +1,15 @@
-import { NextResponse } from 'next/server';
-import { verifyAuthToken } from '@/lib/auth/apiAuth';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuthToken, hasRole } from '@/lib/auth/apiAuth';
+import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
 import { adminAuth } from '@/lib/firebase/admin';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Verify the user is authenticated and is an admin
-    const authResult = await verifyAuthToken(request);
+    const user = await verifyAuthToken(request);
 
-    if (!authResult.authenticated || !authResult.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (authResult.user.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!hasRole(user, 'admin')) {
+      return forbiddenResponse('Admin access required');
     }
 
     const { userId, newPassword } = await request.json();
@@ -41,10 +38,15 @@ export async function POST(request: Request) {
       success: true,
       message: 'Password updated successfully',
     });
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return unauthorizedResponse();
+    }
+
     console.error('Error changing password:', error);
 
-    if (error.code === 'auth/user-not-found') {
+    const errorWithCode = error as { code?: string };
+    if (errorWithCode.code === 'auth/user-not-found') {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 

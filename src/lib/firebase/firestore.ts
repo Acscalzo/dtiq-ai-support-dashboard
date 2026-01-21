@@ -18,6 +18,8 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         photoURL: data.photoURL || null,
+        phone: data.phone || null,
+        title: data.title || null,
       };
     }
     return null;

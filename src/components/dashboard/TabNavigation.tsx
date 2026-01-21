@@ -3,6 +3,7 @@
 import {
   LayoutDashboard,
   Ticket,
+  Phone,
   BookOpen,
   Sparkles,
   BarChart3,
@@ -16,6 +17,7 @@ interface TabNavigationProps {
 const tabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'tickets', label: 'Tickets', icon: Ticket },
+  { id: 'calls', label: 'Call Management', icon: Phone },
   { id: 'documentation', label: 'Documentation', icon: BookOpen },
   { id: 'ai-insights', label: 'AI Insights', icon: Sparkles },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },

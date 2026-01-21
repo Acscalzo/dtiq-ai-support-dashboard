@@ -31,6 +31,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
         photoURL: data.photoURL || null,
+        phone: data.phone || null,
+        title: data.title || null,
       };
     });
 

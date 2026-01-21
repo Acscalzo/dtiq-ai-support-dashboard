@@ -4,16 +4,21 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogOut, User, Shield, ChevronDown, Settings } from 'lucide-react';
+import { ProfileModal } from '@/components/profile';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
   const router = useRouter();
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside (but not when profile modal is open)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      // Don't handle clicks when profile modal is open
+      if (showProfileModal) return;
+
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
@@ -21,7 +26,7 @@ export function UserMenu() {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showProfileModal]);
 
   const handleSignOut = async () => {
     try {
@@ -98,12 +103,12 @@ export function UserMenu() {
             <button
               onClick={() => {
                 setIsOpen(false);
-                router.push('/dashboard/profile');
+                setShowProfileModal(true);
               }}
               className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
             >
               <User className="w-4 h-4" />
-              Profile Settings
+              Profile
             </button>
 
             <button
@@ -143,6 +148,13 @@ export function UserMenu() {
           </div>
         </div>
       )}
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onSuccess={() => refreshUser()}
+      />
     </div>
   );
 }

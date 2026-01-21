@@ -68,6 +68,7 @@ export default function DashboardLayout({
   const getActiveTab = () => {
     if (pathname === '/dashboard') return 'overview';
     if (pathname.startsWith('/dashboard/tickets')) return 'tickets';
+    if (pathname.startsWith('/dashboard/calls')) return 'calls';
     if (pathname.startsWith('/dashboard/documentation')) return 'documentation';
     if (pathname.startsWith('/dashboard/ai-insights')) return 'ai-insights';
     if (pathname.startsWith('/dashboard/analytics')) return 'analytics';
@@ -81,6 +82,7 @@ export default function DashboardLayout({
     const routes: Record<string, string> = {
       overview: '/dashboard',
       tickets: '/dashboard/tickets',
+      calls: '/dashboard/calls',
       documentation: '/dashboard/documentation',
       'ai-insights': '/dashboard/ai-insights',
       analytics: '/dashboard/analytics',
@@ -134,6 +136,7 @@ export default function DashboardLayout({
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'tickets', label: 'Tickets' },
+              { id: 'calls', label: 'Call Management' },
               { id: 'documentation', label: 'Documentation' },
               { id: 'ai-insights', label: 'AI Insights' },
               { id: 'analytics', label: 'Analytics' },

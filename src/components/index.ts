@@ -15,3 +15,11 @@ export { TabNavigation } from './dashboard/TabNavigation';
 // Auth Components
 export { ProtectedRoute } from './auth/ProtectedRoute';
 export { UserMenu } from './auth/UserMenu';
+
+// Settings Components
+export { SettingsSection, SettingsRow, Toggle } from './settings/SettingsSection';
+export { EditNameModal } from './settings/EditNameModal';
+export { PhotoUpload } from './settings/PhotoUpload';
+
+// Profile Components
+export { AvatarUpload, ProfileModal } from './profile';

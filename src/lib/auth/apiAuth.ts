@@ -40,6 +40,8 @@ export async function verifyAuthToken(request: NextRequest): Promise<UserProfile
       createdAt: userData!.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       updatedAt: userData!.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       photoURL: userData!.photoURL || null,
+      phone: userData!.phone || null,
+      title: userData!.title || null,
     };
 
     return userProfile;

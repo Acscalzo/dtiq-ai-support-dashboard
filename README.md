@@ -139,8 +139,40 @@ Add your Firebase configuration:
 NEXT_PUBLIC_FIREBASE_API_KEY="..."
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="..."
 NEXT_PUBLIC_FIREBASE_PROJECT_ID="..."
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-app.appspot.com"
 # ... other Firebase config
 ```
+
+### Firebase Storage (for User Avatars)
+
+To enable user profile photo uploads:
+
+1. **Enable Firebase Storage** in the Firebase Console:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Select your project
+   - Navigate to Build > Storage
+   - Click "Get Started" and follow the setup wizard
+
+2. **Configure Storage Rules** in the Firebase Console or `storage.rules`:
+   ```
+   rules_version = '2';
+   service firebase.storage {
+     match /b/{bucket}/o {
+       // Allow users to read/write only their own avatar
+       match /avatars/{userId}/{allPaths=**} {
+         allow read: if request.auth != null;
+         allow write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+3. **Set the Storage Bucket** in your environment variables:
+   ```env
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-app.appspot.com"
+   ```
+
+   You can find this value in Firebase Console > Project Settings > General > Your apps > Firebase SDK snippet
 
 ### Claude AI
 

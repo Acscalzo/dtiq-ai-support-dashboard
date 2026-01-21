@@ -27,12 +27,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     return 'light';
   });
-  const [mounted, setMounted] = useState(false);
 
   // Apply branding on mount
   useEffect(() => {
     applyBranding();
-    setMounted(true);
   }, []);
 
   // Apply theme to document whenever it changes
@@ -49,20 +47,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('theme', theme);
     }
-
-    console.log('✓ Theme is now:', theme, '| HTML has dark class:', root.classList.contains('dark'));
   }, [theme]);
 
   const toggleTheme = () => {
-    setThemeState(prevTheme => {
-      const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-      console.log('→ Toggling theme:', prevTheme, '→', newTheme);
-      return newTheme;
-    });
+    setThemeState(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
   const setTheme = (newTheme: Theme) => {
-    console.log('→ Setting theme to:', newTheme);
     setThemeState(newTheme);
   };
 
