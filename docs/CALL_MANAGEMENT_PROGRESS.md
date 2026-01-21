@@ -1,6 +1,6 @@
 # Call Management Feature - Progress Log
 
-## Current Status: UI Complete (Mock Data)
+## Current Status: Twilio + OpenAI Realtime Integration Complete
 
 **Last Updated:** January 21, 2026
 
@@ -26,16 +26,14 @@
 - [x] Search functionality (phone, name, keyword)
 - [x] Call feed with responsive card layout
 - [x] Empty state when no calls match filters
+- [x] Loading states for data fetching
+- [x] Error handling for API failures
+- [x] Refresh button to reload calls
 
 ### Utilities
 - [x] `formatPhoneNumber()` - Formats as (XXX) XXX-XXXX
 - [x] `formatDuration()` - Converts seconds to "3m 35s"
 - [x] `formatRelativeTime()` - "2 hours ago", "Today at 3:45 PM"
-
-### Mock Data
-- [x] 7 realistic DTIQ call scenarios with full transcripts
-- [x] Call types: technical support, sales inquiry, billing, urgent issues
-- [x] Various statuses: in_progress, completed, failed, no_answer
 
 ### Styling
 - [x] Company branding colors from config
@@ -43,55 +41,46 @@
 - [x] Responsive design (mobile-friendly)
 - [x] Consistent with existing dashboard components
 
+### API Endpoints (Completed)
+- [x] `GET /api/calls` - Fetch all calls with filtering and stats
+- [x] `GET /api/calls/:id` - Fetch single call details
+- [x] `PATCH /api/calls/:id` - Update call (mark handled/unhandled)
+- [x] `GET /api/calls/stats` - Fetch call statistics
+- [x] `POST /api/twilio/voice` - Twilio voice webhook (handled by WebSocket server)
+
+### Database (Firestore)
+- [x] `calls` collection with fields:
+  - `id`, `callSid`, `phoneNumber`, `callerName`
+  - `status` (in_progress, completed, failed, no_answer)
+  - `isHandled`, `isUrgent`
+  - `startTime`, `endTime`, `durationSeconds`
+  - `aiSummary`, `intent`
+  - `transcript` (array of speaker/text entries)
+  - `createdAt`, `updatedAt`
+
+### Twilio + OpenAI Realtime Integration (Completed)
+- [x] Twilio account integration
+- [x] WebSocket server for Twilio Media Streams (`src/server/websocket-server.ts`)
+- [x] OpenAI Realtime API connection for voice AI
+- [x] Bidirectional audio streaming (caller <-> AI)
+- [x] Real-time transcription via Whisper
+- [x] AI generates summaries and intent classification on call end
+- [x] Urgent call detection based on keywords
+- [x] Call data stored in Firestore in real-time
+
+### State Management
+- [x] `useCalls` hook for fetching calls from API
+- [x] Optimistic updates for mark handled/unhandled
+- [x] Loading and error states
+
 ---
 
-## To Do - Backend Integration
+## To Do
 
-### API Endpoints Needed
-- [ ] `GET /api/calls` - Fetch all calls with pagination
-- [ ] `GET /api/calls/:id` - Fetch single call details
-- [ ] `PATCH /api/calls/:id` - Update call (mark handled/unhandled)
-- [ ] `GET /api/calls/stats` - Fetch call statistics
-
-### Database Schema
-- [ ] Create `calls` table/collection with fields:
-  - `id` (string, primary key)
-  - `phoneNumber` (string)
-  - `callerName` (string, nullable)
-  - `status` (enum: in_progress, completed, failed, no_answer)
-  - `isHandled` (boolean)
-  - `startTime` (datetime)
-  - `endTime` (datetime, nullable)
-  - `durationSeconds` (integer)
-  - `aiSummary` (text)
-  - `intent` (string)
-  - `isUrgent` (boolean)
-  - `createdAt` (datetime)
-  - `updatedAt` (datetime)
-
-- [ ] Create `call_transcripts` table/collection:
-  - `id` (string, primary key)
-  - `callId` (foreign key)
-  - `speaker` (enum: Caller, AI)
-  - `text` (text)
-  - `timestamp` (datetime, nullable)
-  - `sequence` (integer)
-
-### AI Phone Receptionist Integration
-- [ ] Integrate with telephony provider (Twilio, etc.)
-- [ ] Connect to AI voice service for real-time call handling
-- [ ] Webhook endpoints for call events:
-  - [ ] `POST /api/webhooks/call-started`
-  - [ ] `POST /api/webhooks/call-ended`
-  - [ ] `POST /api/webhooks/transcript-update`
-- [ ] Real-time transcript updates (WebSocket or polling)
-
-### State Management Updates
-- [ ] Replace mock data with API calls
-- [ ] Add loading states for data fetching
-- [ ] Add error handling for API failures
-- [ ] Implement optimistic updates for mark handled/unhandled
-- [ ] Add real-time updates for in-progress calls
+### Real-time Updates (Next Priority)
+- [ ] WebSocket or polling for live call updates on dashboard
+- [ ] Live transcript updates while call is in progress
+- [ ] Auto-refresh when new calls come in
 
 ### Additional Features (Future)
 - [ ] Call recording playback
@@ -102,6 +91,7 @@
 - [ ] Caller history (previous calls from same number)
 - [ ] Custom AI response configuration
 - [ ] Call routing rules
+- [ ] Call status webhook (`/api/twilio/status`)
 
 ---
 
@@ -109,25 +99,71 @@
 
 ```
 src/
-├── app/dashboard/calls/
-│   └── page.tsx                 # Main calls page
+├── app/
+│   ├── api/
+│   │   ├── calls/
+│   │   │   ├── route.ts              # GET calls with filters
+│   │   │   ├── [id]/route.ts         # GET/PATCH/DELETE single call
+│   │   │   └── stats/route.ts        # GET call statistics
+│   │   └── twilio/
+│   │       └── voice/route.ts        # Twilio webhook (backup)
+│   └── dashboard/calls/
+│       └── page.tsx                  # Main calls page
 ├── components/calls/
-│   ├── index.ts                 # Component exports
-│   ├── CallCard.tsx             # Call list card
-│   ├── CallDetailsModal.tsx     # Call details modal
-│   └── CallStatusBadge.tsx      # Status badges
-├── data/
-│   └── mockCalls.ts             # Mock data (to be replaced)
-└── lib/utils/
-    └── callFormatters.ts        # Formatting utilities
+│   ├── index.ts                      # Component exports
+│   ├── CallCard.tsx                  # Call list card
+│   ├── CallDetailsModal.tsx          # Call details modal
+│   └── CallStatusBadge.tsx           # Status badges
+├── hooks/
+│   └── useCalls.ts                   # React hook for calls API
+├── lib/
+│   ├── firebase/
+│   │   └── calls.ts                  # Firestore CRUD for calls
+│   └── utils/
+│       └── callFormatters.ts         # Formatting utilities
+├── server/
+│   └── websocket-server.ts           # Twilio + OpenAI WebSocket server
+├── types/
+│   └── call.ts                       # TypeScript types for calls
+└── data/
+    └── mockCalls.ts                  # Mock data (legacy, no longer used)
 ```
+
+---
+
+## Running the System
+
+### Development
+```bash
+# Terminal 1: WebSocket server (Twilio + OpenAI)
+npm run dev:ws
+
+# Terminal 2: Next.js dashboard
+npm run dev
+
+# Terminal 3: ngrok tunnel (for Twilio webhook)
+ngrok http 3001
+```
+
+### Environment Variables Required
+```
+TWILIO_ACCOUNT_SID="..."
+TWILIO_AUTH_TOKEN="..."
+TWILIO_PHONE_NUMBER="+1..."
+OPENAI_API_KEY="sk-..."
+TWILIO_WS_URL="wss://your-ngrok-url.ngrok-free.app"
+```
+
+### Twilio Configuration
+- Voice webhook: `https://your-ngrok-url.ngrok-free.app/api/twilio/voice`
+- Method: POST
 
 ---
 
 ## Notes
 
-- The UI is fully functional with mock data and ready for demo
-- Stats cards currently show hardcoded values (147 total, 12 today, 3m 35s avg)
-- Real stats will need to come from API once backend is connected
-- The "in progress" call shows animated indicator in transcript view
-- Urgent calls have red border and badge for visibility
+- The AI phone receptionist is fully functional with Twilio + OpenAI Realtime API
+- Calls are automatically transcribed and summarized
+- Dashboard shows real calls from Firestore (no more mock data)
+- Stats are calculated from actual call data
+- ngrok URL changes on restart (free tier) - update Twilio webhook accordingly

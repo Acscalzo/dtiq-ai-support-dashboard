@@ -7,13 +7,16 @@ import {
   AlertCircle,
   Clock,
   Search,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { KPICard, EmptyState } from '@/components';
 import { CallCard } from '@/components/calls/CallCard';
 import { CallDetailsModal } from '@/components/calls/CallDetailsModal';
-import { mockCalls, getCallStats, type Call } from '@/data/mockCalls';
+import { useCalls } from '@/hooks/useCalls';
 import { formatDuration } from '@/lib/utils/callFormatters';
 import { getClientBranding } from '@/config/branding';
+import { Call } from '@/types/call';
 
 type FilterTab = 'all' | 'needs_attention' | 'handled' | 'in_progress';
 
@@ -30,14 +33,12 @@ const filterTabs: FilterTabConfig[] = [
 ];
 
 export default function CallsPage() {
-  const [calls, setCalls] = useState<Call[]>(mockCalls);
+  const { calls, stats, loading, error, refreshCalls, toggleHandled } = useCalls();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const branding = getClientBranding();
-
-  // Calculate stats
-  const stats = useMemo(() => getCallStats(calls), [calls]);
 
   // Filter calls based on active filter and search
   const filteredCalls = useMemo(() => {
@@ -97,15 +98,11 @@ export default function CallsPage() {
     }
   };
 
-  // Toggle handled status
-  const handleToggleHandled = (callId: string) => {
-    setCalls((prevCalls) =>
-      prevCalls.map((call) =>
-        call.id === callId ? { ...call, isHandled: !call.isHandled } : call
-      )
-    );
+  // Handle toggle handled
+  const handleToggleHandled = async (callId: string) => {
+    await toggleHandled(callId);
 
-    // Also update selected call if it's the one being toggled
+    // Update selected call if it's the one being toggled
     if (selectedCall && selectedCall.id === callId) {
       setSelectedCall((prev) =>
         prev ? { ...prev, isHandled: !prev.isHandled } : null
@@ -123,42 +120,99 @@ export default function CallsPage() {
     setSelectedCall(null);
   };
 
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshCalls();
+    setIsRefreshing(false);
+  };
+
+  // Loading state
+  if (loading && calls.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading calls...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && calls.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-900 dark:text-white font-medium mb-2">
+            Failed to load calls
+          </p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: branding.primaryColor }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Call Management
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          AI-powered phone receptionist - 24/7 call handling
-        </p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Call Management
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            AI-powered phone receptionist - 24/7 call handling
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw
+            className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+          />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <KPICard
           label="Total Calls"
-          value="147"
-          change="+12%"
+          value={String(stats?.totalCalls ?? 0)}
+          change={stats?.totalCalls ? `${stats.totalCalls} total` : 'No calls yet'}
           icon={Phone}
         />
         <KPICard
           label="Calls Today"
-          value="12"
-          change="+3"
+          value={String(stats?.callsToday ?? 0)}
+          change={stats?.callsToday ? `+${stats.callsToday} today` : 'None today'}
           icon={PhoneIncoming}
         />
         <KPICard
           label="Needs Attention"
-          value={String(stats.needsAttention)}
-          change={stats.needsAttention > 0 ? 'Action required' : 'All clear'}
+          value={String(stats?.needsAttention ?? 0)}
+          change={
+            stats?.needsAttention && stats.needsAttention > 0
+              ? 'Action required'
+              : 'All clear'
+          }
           icon={AlertCircle}
         />
         <KPICard
           label="Avg Duration"
-          value="3m 35s"
-          change="-15s"
+          value={stats?.avgDurationSeconds ? formatDuration(stats.avgDurationSeconds) : '0s'}
+          change={stats?.inProgress ? `${stats.inProgress} in progress` : 'No active calls'}
           icon={Clock}
         />
       </div>
@@ -250,7 +304,7 @@ export default function CallsPage() {
           title={searchQuery ? 'No Calls Found' : 'No Calls Yet'}
           description={
             searchQuery
-              ? 'Try adjusting your search or filters to find what you\'re looking for.'
+              ? "Try adjusting your search or filters to find what you're looking for."
               : 'Calls will appear here once they are received by the AI receptionist.'
           }
         />

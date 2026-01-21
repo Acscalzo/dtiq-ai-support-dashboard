@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Tag,
 } from 'lucide-react';
-import type { Call } from '@/data/mockCalls';
+import type { Call } from '@/types/call';
 import { CallStatusBadge, HandledBadge } from './CallStatusBadge';
 import {
   formatPhoneNumber,

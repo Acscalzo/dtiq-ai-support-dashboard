@@ -1,4 +1,4 @@
-import type { CallStatus } from '@/data/mockCalls';
+import type { CallStatus } from '@/types/call';
 
 interface CallStatusBadgeProps {
   status: CallStatus;
