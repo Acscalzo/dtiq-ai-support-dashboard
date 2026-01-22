@@ -23,11 +23,6 @@ export async function POST(request: NextRequest) {
   // Create TwiML response
   const response = new VoiceResponse();
 
-  // Initial greeting while connecting to AI
-  response.say({
-    voice: 'Polly.Matthew',
-  }, 'Thank you for calling DTiQ. Please hold while I connect you to our AI assistant.');
-
   // Start bidirectional media stream to our WebSocket server
   const connect = response.connect();
   const stream = connect.stream({
