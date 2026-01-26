@@ -16,7 +16,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { authenticatedFetch } from '@/lib/api/client';
 import { useTheme } from '@/components/ThemeProvider';
 import type { InsightsSummary, ApiResponse } from '@/types/api';

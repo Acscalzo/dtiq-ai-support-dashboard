@@ -9,7 +9,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { EmptyState } from '@/components';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { authenticatedFetch } from '@/lib/api/client';
 import type {
   DocumentationArticle,

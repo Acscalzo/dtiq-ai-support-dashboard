@@ -4,13 +4,18 @@ import { UserProfile } from '@/types/auth';
 import { verifyAuthToken, hasRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
 import { adminDb } from '@/lib/firebase/admin';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/admin/users
  * Returns list of all users (admin only)
+ * Multi-tenant: Returns users from current company's Firebase
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<UserProfile[]>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication and admin role
     const user = await verifyAuthToken(request);
 

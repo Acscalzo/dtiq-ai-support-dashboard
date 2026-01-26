@@ -3,16 +3,21 @@ import { verifyAuthToken } from '@/lib/auth/apiAuth';
 import { adminDb } from '@/lib/firebase/admin';
 import { Notification, CreateNotificationInput } from '@/types/notifications';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/notifications
  * Get notifications for the current user
+ * Multi-tenant: Returns notifications from current company's Firebase
  * Query params:
  *   - unreadOnly: boolean (default: false)
  *   - limit: number (default: 50, max: 100)
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     const { searchParams } = new URL(request.url);
@@ -75,9 +80,13 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/notifications
  * Create a new notification (internal use / admin only)
+ * Multi-tenant: Creates notification in current company's Firebase
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     // Only admins can create notifications via API
@@ -131,10 +140,14 @@ export async function POST(request: NextRequest) {
 /**
  * PATCH /api/notifications
  * Mark a notification as read
+ * Multi-tenant: Updates notification in current company's Firebase
  * Body: { id: string }
  */
 export async function PATCH(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     const body = await request.json();
@@ -191,10 +204,14 @@ export async function PATCH(request: NextRequest) {
 /**
  * DELETE /api/notifications
  * Delete a notification
+ * Multi-tenant: Deletes notification from current company's Firebase
  * Query params: id
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     const { searchParams } = new URL(request.url);

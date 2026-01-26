@@ -1,7 +1,7 @@
 'use client';
 
 import { Search, Bell, X } from 'lucide-react';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { useState, useEffect, useRef } from 'react';
 import { SearchResults } from '@/components';
 import { SearchResponse, ApiResponse } from '@/types/api';
@@ -100,7 +100,7 @@ export function Header() {
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 transition-colors">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between gap-6">
-          {/* Logo/Company Name */}
+          {/* Logo/Company Name - Multi-tenant branding */}
           <div className="flex items-center gap-3">
             {branding.logoUrl ? (
               <img
@@ -109,13 +109,21 @@ export function Header() {
                 className="h-8 w-auto ml-4"
               />
             ) : (
-              <div className="h-8 px-3 flex items-center justify-center rounded font-bold text-white bg-primary">
-                {branding.companyName.charAt(0)}
+              <div
+                className="h-8 px-3 flex items-center justify-center rounded font-bold text-white"
+                style={{ backgroundColor: branding.primaryColor }}
+              >
+                {branding.logoText}
               </div>
             )}
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Dashboard
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                {branding.companyName}
+              </h1>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {branding.tagline}
+              </span>
+            </div>
           </div>
 
           {/* Search Bar */}
@@ -132,7 +140,8 @@ export function Header() {
                   }
                 }}
                 placeholder="Search tickets, documentation..."
-                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all"
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all"
+                style={{ '--tw-ring-color': branding.primaryColor } as React.CSSProperties}
               />
               {searchQuery && (
                 <button

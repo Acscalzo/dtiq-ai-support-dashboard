@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SearchResult, SearchResponse, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 // Import mock data from other API routes
 // In production, this would come from a shared database service
@@ -104,9 +105,13 @@ const mockDocs = [
 /**
  * GET /api/search?q=<query>
  * Searches across tickets and documentation (requires authentication)
+ * Multi-tenant: Searches within current company's data
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<SearchResponse>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

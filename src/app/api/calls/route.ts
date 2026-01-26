@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCalls, getCallStats } from '@/lib/firebase/calls';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
 import { CallFilters, CallStatus } from '@/types/call';
+import { getCompany } from '@/lib/config/company';
 
-// GET /api/calls - Get all calls with optional filtering
+/**
+ * GET /api/calls
+ * Get all calls with optional filtering
+ * Multi-tenant: Returns calls from current company's Firebase
+ */
 export async function GET(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     await verifyAuthToken(request);
 

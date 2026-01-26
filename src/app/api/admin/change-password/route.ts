@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthToken, hasRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
 import { adminAuth } from '@/lib/firebase/admin';
+import { getCompany } from '@/lib/config/company';
 
+/**
+ * POST /api/admin/change-password
+ * Change user password (admin only)
+ * Multi-tenant: Changes password in current company's Firebase Auth
+ */
 export async function POST(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify the user is authenticated and is an admin
     const user = await verifyAuthToken(request);
 

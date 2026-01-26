@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCallById, updateCall, deleteCall } from '@/lib/firebase/calls';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
+import { getCompany } from '@/lib/config/company';
 
-// GET /api/calls/[id] - Get a single call by ID
+/**
+ * GET /api/calls/[id]
+ * Get a single call by ID
+ * Multi-tenant: Returns call from current company's Firebase
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     await verifyAuthToken(request);
 
     const { id } = await params;
@@ -30,12 +38,19 @@ export async function GET(
   }
 }
 
-// PATCH /api/calls/[id] - Update a call (e.g., mark as handled)
+/**
+ * PATCH /api/calls/[id]
+ * Update a call (e.g., mark as handled)
+ * Multi-tenant: Updates call in current company's Firebase
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     await verifyAuthToken(request);
 
     const { id } = await params;
@@ -77,12 +92,19 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/calls/[id] - Delete a call (admin only)
+/**
+ * DELETE /api/calls/[id]
+ * Delete a call (admin only)
+ * Multi-tenant: Deletes call from current company's Firebase
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     // Check if user is admin

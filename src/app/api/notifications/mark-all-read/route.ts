@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
 import { adminDb } from '@/lib/firebase/admin';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * POST /api/notifications/mark-all-read
  * Mark all notifications as read for the current user
+ * Multi-tenant: Updates notifications in current company's Firebase
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     // Get all unread notifications for this user

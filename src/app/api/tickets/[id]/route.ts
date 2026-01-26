@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Ticket, UpdateTicketRequest, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 // Mock data (same as in tickets/route.ts - in real app, this would be from DB)
 const mockTickets: Ticket[] = [
@@ -93,12 +94,16 @@ const mockTickets: Ticket[] = [
 /**
  * GET /api/tickets/[id]
  * Returns a single ticket by ID (requires authentication)
+ * Multi-tenant: Returns ticket for the current company's subdomain
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ): Promise<NextResponse<ApiResponse<Ticket>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 
@@ -145,12 +150,16 @@ export async function GET(
 /**
  * PATCH /api/tickets/[id]
  * Updates a ticket (requires authentication)
+ * Multi-tenant: Updates ticket for the current company's subdomain
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ): Promise<NextResponse<ApiResponse<Ticket>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

@@ -5,16 +5,21 @@ import { verifyAuthToken, hasRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * PATCH /api/admin/users/[uid]/role
  * Update user role (admin only)
+ * Multi-tenant: Updates user in current company's Firebase
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { uid: string } }
 ): Promise<NextResponse<ApiResponse<{ success: boolean }>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication and admin role
     const user = await verifyAuthToken(request);
 

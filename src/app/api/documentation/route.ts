@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DocumentationArticle, CreateDocumentationRequest, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 // Mock documentation data
 const mockDocs: DocumentationArticle[] = [
@@ -70,9 +71,13 @@ const mockDocs: DocumentationArticle[] = [
 /**
  * GET /api/documentation
  * Returns list of documentation articles (requires authentication)
+ * Multi-tenant: Returns documentation for the current company's subdomain
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<DocumentationArticle[]>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 
@@ -126,11 +131,15 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 /**
  * POST /api/documentation
  * Creates a new documentation article (requires authentication)
+ * Multi-tenant: Creates documentation for the current company's subdomain
  */
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ApiResponse<DocumentationArticle>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

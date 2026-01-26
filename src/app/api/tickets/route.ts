@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Ticket, CreateTicketRequest, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 // Mock data
 const mockTickets: Ticket[] = [
@@ -93,9 +94,13 @@ const mockTickets: Ticket[] = [
 /**
  * GET /api/tickets
  * Returns list of all tickets (requires authentication)
+ * Multi-tenant: Returns tickets for the current company's subdomain
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<Ticket[]>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 
@@ -146,9 +151,13 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 /**
  * POST /api/tickets
  * Creates a new ticket (requires agent, manager, or admin role)
+ * Multi-tenant: Creates ticket for the current company's subdomain
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<Ticket>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

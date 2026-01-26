@@ -36,7 +36,7 @@ const openai = new OpenAI({
 });
 
 // System prompt for the AI receptionist
-const SYSTEM_PROMPT = `You are a friendly and professional AI phone receptionist for DTiQ, a company that provides video surveillance, loss prevention, and business intelligence solutions for restaurants and retail businesses.
+const SYSTEM_PROMPT = `You are a friendly and professional AI phone receptionist for DTIQ, a company that provides unified communications, business phone systems, and IT solutions for businesses.
 
 Your role is to:
 1. Greet callers warmly and professionally
@@ -49,16 +49,16 @@ Your role is to:
 Important guidelines:
 - Be concise but friendly - this is a phone call
 - Ask clarifying questions when needed
-- If the issue is urgent (system down, security concern), acknowledge the urgency
+- If the issue is urgent (system down, phones not working), acknowledge the urgency
 - Let callers know you're an AI assistant and a human can call them back if needed
 - Always be helpful and patient
 
-Common DTiQ products/services you should know about:
-- Video surveillance systems (cameras, DVRs, NVRs)
-- SmartAudit loss prevention software
-- Drive-thru optimization
-- Cloud-based video storage
-- Mobile app for remote viewing`;
+Common DTIQ products/services you should know about:
+- Business phone systems (VoIP, PBX, cloud phone)
+- Unified communications solutions
+- Internet and connectivity services
+- IT support and managed services
+- Video conferencing solutions`;
 
 // Active call sessions
 interface CallSession {
@@ -103,7 +103,7 @@ const server = createServer(async (req, res) => {
       // Return TwiML response
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">Thank you for calling DTiQ. Please hold while I connect you to our AI assistant.</Say>
+  <Say voice="Polly.Matthew">Thank you for calling DTIQ. Please hold while I connect you to our AI assistant.</Say>
   <Connect>
     <Stream url="${wsUrl}">
       <Parameter name="callSid" value="${callSid}" />
@@ -275,7 +275,7 @@ async function connectToOpenAI(session: CallSession) {
         type: 'response.create',
         response: {
           modalities: ['text', 'audio'],
-          instructions: 'Greet the caller warmly. Introduce yourself as DTiQ\'s AI assistant and ask how you can help them today.',
+          instructions: 'Greet the caller warmly. Introduce yourself as DTIQ\'s AI assistant and ask how you can help them today.',
         },
       }));
     });

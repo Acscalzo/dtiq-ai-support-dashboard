@@ -24,7 +24,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { KPICard, StatusBadge, PriorityBadge } from '@/components';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { authenticatedFetch } from '@/lib/api/client';
 import { useTheme } from '@/components/ThemeProvider';
 import type {

@@ -4,7 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { UserPlus, Mail, Lock, User, AlertCircle } from 'lucide-react';
 
 export default function SignupPage() {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { Header, TabNavigation } from '@/components';
 import { Menu, X } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';

@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DashboardMetrics, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/metrics
  * Returns dashboard KPIs based on time range (requires authentication)
+ * Multi-tenant: Returns metrics for the current company's subdomain
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<DashboardMetrics>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

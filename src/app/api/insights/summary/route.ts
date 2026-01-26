@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { InsightsSummary, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/insights/summary
  * Returns AI insight counts and statistics (requires authentication)
+ * Multi-tenant: Returns insights for the current company's subdomain
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<InsightsSummary>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

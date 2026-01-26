@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DocumentationStats, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/documentation/stats
  * Returns documentation statistics by category (requires authentication)
+ * Multi-tenant: Returns stats for the current company's subdomain
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<DocumentationStats>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

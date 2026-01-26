@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
-import { getClientBranding } from "@/config/branding";
+import { getClientBranding } from "@/config/branding-client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {

@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
+import { getCompany } from '@/lib/config/company';
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
-// Twilio webhook for incoming calls
-// This endpoint returns TwiML to start a media stream to our WebSocket server
+/**
+ * POST /api/twilio/voice
+ * Twilio webhook for incoming calls
+ * Returns TwiML to start a media stream to our WebSocket server
+ * Multi-tenant: Routes to appropriate WebSocket based on company config
+ */
 export async function POST(request: NextRequest) {
+  // Get current company from subdomain (for logging/config purposes)
+  const company = getCompany();
   const formData = await request.formData();
 
   // Extract call information from Twilio's request

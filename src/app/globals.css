@@ -5,6 +5,14 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Company branding CSS variables (defaults - overridden by layout.tsx) */
+  --primary-color: #0066CC;
+  --primary-color-light: #4d94db;
+  --primary-color-lighter: #80b3e6;
+  --primary-color-dark: #0052a3;
+  --primary-color-darker: #003d7a;
+  --primary-color-rgb: 0, 102, 204;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,5 +31,96 @@ body {
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* Company branding utility classes */
+@layer utilities {
+  /* Background colors */
+  .bg-primary {
+    background-color: var(--primary-color);
+  }
+  .bg-primary-light {
+    background-color: var(--primary-color-light);
+  }
+  .bg-primary-lighter {
+    background-color: var(--primary-color-lighter);
+  }
+  .bg-primary-dark {
+    background-color: var(--primary-color-dark);
+  }
+  .bg-primary-darker {
+    background-color: var(--primary-color-darker);
+  }
+
+  /* Text colors */
+  .text-primary {
+    color: var(--primary-color);
+  }
+  .text-primary-light {
+    color: var(--primary-color-light);
+  }
+  .text-primary-dark {
+    color: var(--primary-color-dark);
+  }
+
+  /* Border colors */
+  .border-primary {
+    border-color: var(--primary-color);
+  }
+  .border-primary-light {
+    border-color: var(--primary-color-light);
+  }
+  .border-primary-dark {
+    border-color: var(--primary-color-dark);
+  }
+
+  /* Ring colors (for focus states) */
+  .ring-primary {
+    --tw-ring-color: var(--primary-color);
+  }
+  .ring-primary-light {
+    --tw-ring-color: var(--primary-color-light);
+  }
+
+  /* Background with alpha */
+  .bg-primary\/10 {
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+  }
+  .bg-primary\/20 {
+    background-color: rgba(var(--primary-color-rgb), 0.2);
+  }
+  .bg-primary\/50 {
+    background-color: rgba(var(--primary-color-rgb), 0.5);
+  }
+
+  /* Hover states */
+  .hover\:bg-primary:hover {
+    background-color: var(--primary-color);
+  }
+  .hover\:bg-primary-dark:hover {
+    background-color: var(--primary-color-dark);
+  }
+  .hover\:text-primary:hover {
+    color: var(--primary-color);
+  }
+  .hover\:border-primary:hover {
+    border-color: var(--primary-color);
+  }
+
+  /* Focus states */
+  .focus\:ring-primary:focus {
+    --tw-ring-color: var(--primary-color);
+  }
+  .focus\:border-primary:focus {
+    border-color: var(--primary-color);
+  }
+
+  /* Gradient utilities */
+  .from-primary {
+    --tw-gradient-from: var(--primary-color) var(--tw-gradient-from-position);
+  }
+  .to-primary-dark {
+    --tw-gradient-to: var(--primary-color-dark) var(--tw-gradient-to-position);
   }
 }

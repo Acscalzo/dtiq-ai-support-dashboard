@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { EmptyState, StatusBadge, PriorityBadge } from '@/components';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { authenticatedFetch } from '@/lib/api/client';
 import type { Ticket, ApiResponse } from '@/types/api';
 

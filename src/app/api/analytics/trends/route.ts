@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AnalyticsTrends, TrendDataPoint, ApiResponse } from '@/types/api';
 import { verifyAuthToken, hasAnyRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * Generate mock trend data for the last N days
@@ -33,9 +34,13 @@ function generateTrendData(days: number): TrendDataPoint[] {
 /**
  * GET /api/analytics/trends
  * Returns time-series data for charts (requires authentication)
+ * Multi-tenant: Returns trends for the current company's subdomain
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<AnalyticsTrends>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     // Verify authentication
     const user = await verifyAuthToken(request);
 

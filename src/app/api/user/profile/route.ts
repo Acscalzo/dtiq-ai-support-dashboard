@@ -5,13 +5,18 @@ import { verifyAuthToken } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse } from '@/lib/auth/apiErrors';
 import { adminDb } from '@/lib/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/user/profile
  * Returns the current user's profile
+ * Multi-tenant: Returns profile from current company's Firebase
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<UserProfile>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     return NextResponse.json({
@@ -43,9 +48,13 @@ interface UpdateProfileRequest {
 /**
  * PATCH /api/user/profile
  * Updates the current user's profile
+ * Multi-tenant: Updates profile in current company's Firebase
  */
 export async function PATCH(request: NextRequest): Promise<NextResponse<ApiResponse<UserProfile>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     const body: UpdateProfileRequest = await request.json();

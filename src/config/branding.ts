@@ -1,67 +1,55 @@
 /**
- * Company Branding Configuration
+ * Server-side Company Branding Configuration
  *
- * This file reads company-specific branding information from environment variables.
- * Each deployment of this template should have its own .env file with company-specific values.
+ * This file contains branding utilities for Server Components.
+ * It imports next/headers for server-side company detection.
+ *
+ * For Client Components, use '@/config/branding-client' instead.
  */
 
-export interface BrandingConfig {
-  companyName: string;
-  companySlug: string;
-  primaryColor: string;
-  logoUrl?: string;
-}
+import { getCompany } from '@/lib/config/company'
+
+// Re-export client-safe utilities for convenience in server components
+export {
+  brandingConfigs,
+  getBrandingBySlug,
+  isValidCompanySlug,
+  getAllCompanySlugs,
+  type BrandingConfig,
+  type CompanySlug,
+} from './branding-client'
+
+import { getBrandingBySlug, type BrandingConfig } from './branding-client'
 
 /**
- * Gets the current company branding configuration from environment variables
+ * Gets the branding configuration for the current company.
  *
- * @returns {BrandingConfig} The branding configuration for the current deployment
- * @throws {Error} If required environment variables are not set
+ * Uses the subdomain from the request to determine which company's
+ * branding to return. Falls back to DTIQ if company not found.
+ *
+ * @returns The branding configuration for the current company
+ *
+ * @remarks
+ * This function uses `getCompany()` which relies on Next.js `headers()`.
+ * It can only be called in:
+ * - Server Components
+ * - Route Handlers
+ * - Server Actions
+ *
+ * For Client Components, use `getClientBranding()` from `@/config/branding-client`.
+ *
+ * @example
+ * ```tsx
+ * // In a Server Component
+ * import { getBranding } from '@/config/branding'
+ *
+ * export default function Header() {
+ *   const branding = getBranding()
+ *   return <h1 style={{ color: branding.primaryColor }}>{branding.companyName}</h1>
+ * }
+ * ```
  */
 export function getBranding(): BrandingConfig {
-  const companyName = process.env.COMPANY_NAME || process.env.NEXT_PUBLIC_COMPANY_NAME;
-  const companySlug = process.env.COMPANY_SLUG || process.env.NEXT_PUBLIC_COMPANY_SLUG;
-  const primaryColor = process.env.COMPANY_PRIMARY_COLOR || process.env.NEXT_PUBLIC_COMPANY_PRIMARY_COLOR;
-  const logoUrl = process.env.COMPANY_LOGO_URL || process.env.NEXT_PUBLIC_COMPANY_LOGO_URL;
-
-  if (!companyName) {
-    throw new Error('COMPANY_NAME environment variable is required');
-  }
-
-  if (!companySlug) {
-    throw new Error('COMPANY_SLUG environment variable is required');
-  }
-
-  if (!primaryColor) {
-    throw new Error('COMPANY_PRIMARY_COLOR environment variable is required');
-  }
-
-  return {
-    companyName,
-    companySlug,
-    primaryColor,
-    logoUrl: logoUrl || undefined,
-  };
-}
-
-/**
- * Client-side branding configuration
- * Use this for components that run on the client side
- */
-export function getClientBranding(): BrandingConfig {
-  const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME;
-  const companySlug = process.env.NEXT_PUBLIC_COMPANY_SLUG;
-  const primaryColor = process.env.NEXT_PUBLIC_COMPANY_PRIMARY_COLOR;
-  const logoUrl = process.env.NEXT_PUBLIC_COMPANY_LOGO_URL;
-
-  if (!companyName || !companySlug || !primaryColor) {
-    throw new Error('NEXT_PUBLIC_COMPANY_* environment variables are required for client-side usage');
-  }
-
-  return {
-    companyName,
-    companySlug,
-    primaryColor,
-    logoUrl: logoUrl || undefined,
-  };
+  const company = getCompany()
+  return getBrandingBySlug(company)
 }

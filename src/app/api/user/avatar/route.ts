@@ -5,6 +5,7 @@ import { unauthorizedResponse } from '@/lib/auth/apiErrors';
 import { adminDb } from '@/lib/firebase/admin';
 import { getStorage } from 'firebase-admin/storage';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getCompany } from '@/lib/config/company';
 
 interface AvatarResponse {
   photoURL: string | null;
@@ -13,9 +14,13 @@ interface AvatarResponse {
 /**
  * POST /api/user/avatar
  * Upload a new avatar (expects base64 image data or URL)
+ * Multi-tenant: Uploads to current company's Firebase Storage
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<AvatarResponse>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     const body = await request.json();
@@ -71,9 +76,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 /**
  * DELETE /api/user/avatar
  * Remove the user's avatar
+ * Multi-tenant: Deletes from current company's Firebase Storage
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse<ApiResponse<AvatarResponse>>> {
   try {
+    // Get current company from subdomain
+    const company = getCompany();
+
     const user = await verifyAuthToken(request);
 
     // Get current photo URL to potentially delete from storage

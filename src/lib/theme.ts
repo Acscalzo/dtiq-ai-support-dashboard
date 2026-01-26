@@ -5,7 +5,7 @@
  * by injecting CSS variables into the document root based on the branding configuration.
  */
 
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 
 /**
  * Converts a hex color to RGB values

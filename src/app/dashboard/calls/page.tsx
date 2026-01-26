@@ -15,7 +15,7 @@ import { CallCard } from '@/components/calls/CallCard';
 import { CallDetailsModal } from '@/components/calls/CallDetailsModal';
 import { useCalls } from '@/hooks/useCalls';
 import { formatDuration } from '@/lib/utils/callFormatters';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { Call } from '@/types/call';
 
 type FilterTab = 'all' | 'needs_attention' | 'handled' | 'in_progress';

@@ -24,7 +24,7 @@ import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { SettingsSection, SettingsRow, Toggle } from '@/components/settings/SettingsSection';
 import { EditNameModal } from '@/components/settings/EditNameModal';
 import { PhotoUpload } from '@/components/settings/PhotoUpload';
-import { getClientBranding } from '@/config/branding';
+import { getClientBranding } from '@/config/branding-client';
 import { DateFormat } from '@/types/settings';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
