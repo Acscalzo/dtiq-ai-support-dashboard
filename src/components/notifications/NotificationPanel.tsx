@@ -142,7 +142,7 @@ export function NotificationPanel({
             </div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">No notifications</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              You're all caught up!
+              You&apos;re all caught up!
             </p>
           </div>
         ) : (

@@ -37,7 +37,7 @@ export function SearchResults({ results, isLoading, query, onClose }: SearchResu
     return (
       <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-4">
         <div className="text-center py-6">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">No results found for "{query}"</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No results found for &quot;{query}&quot;</p>
           <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Try a different search term</p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function SearchResults({ results, isLoading, query, onClose }: SearchResu
       {/* Footer */}
       <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 text-center">
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Showing {totalResults} result{totalResults !== 1 ? 's' : ''} for "{query}"
+          Showing {totalResults} result{totalResults !== 1 ? 's' : ''} for &quot;{query}&quot;
         </p>
       </div>
     </div>
