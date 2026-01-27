@@ -17,7 +17,6 @@
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
 import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth'
-import { getFirestore, Firestore } from 'firebase/firestore'
 import {
   getClientCompanyUpper,
   DEFAULT_COMPANY_UPPER,
@@ -107,7 +106,14 @@ if (!getApps().length) {
 }
 
 export const auth: Auth = getAuth(app)
-export const db: Firestore = getFirestore(app)
+
+// Firestore stub - these features are being migrated to PostgreSQL
+// This prevents import errors but will throw if actually used
+export const db = {
+  _stub: true,
+  collection: () => { throw new Error('Firestore is disabled. This feature is being migrated to PostgreSQL.') },
+  doc: () => { throw new Error('Firestore is disabled. This feature is being migrated to PostgreSQL.') },
+} as any
 
 // Set auth persistence to LOCAL (survives browser restarts)
 // This prevents auth state from being lost on page refresh

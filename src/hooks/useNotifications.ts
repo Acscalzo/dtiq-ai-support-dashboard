@@ -1,22 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot,
-  doc,
-  updateDoc,
-  writeBatch,
-  deleteDoc,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notification } from '@/types/notifications';
+import { authenticatedFetch } from '@/lib/api/client';
 
 interface UseNotificationsOptions {
   limitCount?: number;
@@ -32,6 +19,7 @@ interface UseNotificationsReturn {
   markAllAsRead: () => Promise<void>;
   deleteNotification: (notificationId: string) => Promise<void>;
   deleteAllRead: () => Promise<void>;
+  refetch: () => void;
 }
 
 export function useNotifications(options: UseNotificationsOptions = {}): UseNotificationsReturn {
@@ -40,154 +28,156 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Check if Firestore is disabled (stubbed)
-  const isFirestoreDisabled = (db as any)?._stub === true;
-
-  // Real-time listener for notifications
+  // Fetch notifications from API
   useEffect(() => {
-    // If Firestore is disabled, return empty notifications
-    if (isFirestoreDisabled) {
-      setNotifications([]);
-      setLoading(false);
-      return;
-    }
-
     if (!user?.uid) {
       setNotifications([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    const fetchNotifications = async () => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const notificationsRef = collection(db, 'notifications');
+      try {
+        const params = new URLSearchParams({
+          limit: limitCount.toString(),
+          ...(unreadOnly && { unreadOnly: 'true' }),
+        });
 
-      // Build query
-      let q = query(
-        notificationsRef,
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      );
+        const response = await authenticatedFetch(`/api/notifications?${params}`);
 
-      if (unreadOnly) {
-        q = query(
-          notificationsRef,
-          where('userId', '==', user.uid),
-          where('read', '==', false),
-          orderBy('createdAt', 'desc'),
-          limit(limitCount)
-        );
-      }
-
-      // Subscribe to real-time updates
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const notifs: Notification[] = snapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              userId: data.userId,
-              type: data.type,
-              title: data.title,
-              message: data.message,
-              read: data.read,
-              actionUrl: data.actionUrl,
-              createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-            };
-          });
-          setNotifications(notifs);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Error fetching notifications:', err);
-          setError('Failed to load notifications');
-          setLoading(false);
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications');
         }
-      );
 
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Error setting up notifications listener:', err);
-      setError('Failed to load notifications');
-      setLoading(false);
-    }
-  }, [user?.uid, limitCount, unreadOnly, isFirestoreDisabled]);
+        const result = await response.json();
+        setNotifications(result.data || []);
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+        setError('Failed to load notifications');
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, [user?.uid, limitCount, unreadOnly, refreshKey]);
 
   // Calculate unread count
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // Refetch function
+  const refetch = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+
   // Mark single notification as read
   const markAsRead = useCallback(async (notificationId: string) => {
-    if (isFirestoreDisabled || !user?.uid) return;
+    if (!user?.uid) return;
+
+    // Optimistic update
+    setNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    );
 
     try {
-      const notificationRef = doc(db, 'notifications', notificationId);
-      await updateDoc(notificationRef, {
-        read: true,
+      const response = await authenticatedFetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: notificationId }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark notification as read');
+      }
     } catch (err) {
       console.error('Error marking notification as read:', err);
+      // Revert on error
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
+      );
       throw err;
     }
-  }, [user?.uid, isFirestoreDisabled]);
+  }, [user?.uid]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
-    if (isFirestoreDisabled || !user?.uid) return;
+    if (!user?.uid) return;
+
+    const unreadNotifs = notifications.filter(n => !n.read);
+    if (unreadNotifs.length === 0) return;
+
+    // Optimistic update
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
 
     try {
-      const batch = writeBatch(db);
-      const unreadNotifs = notifications.filter((n) => !n.read);
-
-      unreadNotifs.forEach((notif) => {
-        const notificationRef = doc(db, 'notifications', notif.id);
-        batch.update(notificationRef, { read: true });
+      const response = await authenticatedFetch('/api/notifications/mark-all-read', {
+        method: 'POST',
       });
 
-      await batch.commit();
+      if (!response.ok) {
+        throw new Error('Failed to mark all as read');
+      }
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
+      // Revert on error - refetch to get actual state
+      refetch();
       throw err;
     }
-  }, [user?.uid, notifications, isFirestoreDisabled]);
+  }, [user?.uid, notifications, refetch]);
 
   // Delete single notification
   const deleteNotification = useCallback(async (notificationId: string) => {
-    if (isFirestoreDisabled || !user?.uid) return;
+    if (!user?.uid) return;
+
+    // Optimistic update
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
 
     try {
-      const notificationRef = doc(db, 'notifications', notificationId);
-      await deleteDoc(notificationRef);
+      const response = await authenticatedFetch(`/api/notifications?id=${notificationId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete notification');
+      }
     } catch (err) {
       console.error('Error deleting notification:', err);
+      // Refetch on error
+      refetch();
       throw err;
     }
-  }, [user?.uid, isFirestoreDisabled]);
+  }, [user?.uid, refetch]);
 
   // Delete all read notifications
   const deleteAllRead = useCallback(async () => {
-    if (isFirestoreDisabled || !user?.uid) return;
+    if (!user?.uid) return;
+
+    const readNotifs = notifications.filter(n => n.read);
+    if (readNotifs.length === 0) return;
+
+    // Optimistic update
+    setNotifications(prev => prev.filter(n => !n.read));
 
     try {
-      const batch = writeBatch(db);
-      const readNotifs = notifications.filter((n) => n.read);
-
-      readNotifs.forEach((notif) => {
-        const notificationRef = doc(db, 'notifications', notif.id);
-        batch.delete(notificationRef);
-      });
-
-      await batch.commit();
+      // Delete each read notification
+      await Promise.all(
+        readNotifs.map(n =>
+          authenticatedFetch(`/api/notifications?id=${n.id}`, { method: 'DELETE' })
+        )
+      );
     } catch (err) {
       console.error('Error deleting read notifications:', err);
+      // Refetch on error
+      refetch();
       throw err;
     }
-  }, [user?.uid, notifications, isFirestoreDisabled]);
+  }, [user?.uid, notifications, refetch]);
 
   return {
     notifications,
@@ -198,5 +188,6 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     markAllAsRead,
     deleteNotification,
     deleteAllRead,
+    refetch,
   };
 }

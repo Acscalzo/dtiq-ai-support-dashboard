@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, User, Loader2 } from 'lucide-react';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/lib/api/client';
 
 interface EditNameModalProps {
   isOpen: boolean;
@@ -87,16 +86,22 @@ export function EditNameModal({ isOpen, onClose, currentName, onSuccess }: EditN
       setLoading(true);
       setError(null);
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        displayName: trimmedName,
-        updatedAt: Timestamp.now(),
+      const response = await authenticatedFetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: trimmedName }),
       });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update name');
+      }
 
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Error updating name:', err);
-      setError('Failed to update name. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to update name. Please try again.');
     } finally {
       setLoading(false);
     }

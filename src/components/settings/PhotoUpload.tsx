@@ -2,9 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { Camera, Upload, Loader2, X, Check } from 'lucide-react';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/lib/api/client';
 
 interface PhotoUploadProps {
   currentPhotoURL?: string | null;
@@ -63,19 +62,23 @@ export function PhotoUpload({ currentPhotoURL, displayName, onSuccess }: PhotoUp
       setLoading(true);
       setError(null);
 
-      // Store the base64 data URL directly in Firestore
-      // Note: For production, you would use Firebase Storage instead
-      await updateDoc(doc(db, 'users', user.uid), {
-        photoURL: previewUrl,
-        updatedAt: Timestamp.now(),
+      const response = await authenticatedFetch('/api/user/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoURL: previewUrl }),
       });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to upload photo');
+      }
 
       setShowConfirm(false);
       setPreviewUrl(null);
       onSuccess();
     } catch (err) {
       console.error('Error uploading photo:', err);
-      setError('Failed to upload photo. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to upload photo. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -97,15 +100,19 @@ export function PhotoUpload({ currentPhotoURL, displayName, onSuccess }: PhotoUp
       setLoading(true);
       setError(null);
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        photoURL: null,
-        updatedAt: Timestamp.now(),
+      const response = await authenticatedFetch('/api/user/avatar', {
+        method: 'DELETE',
       });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to remove photo');
+      }
 
       onSuccess();
     } catch (err) {
       console.error('Error removing photo:', err);
-      setError('Failed to remove photo. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to remove photo. Please try again.');
     } finally {
       setLoading(false);
     }

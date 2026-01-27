@@ -1,19 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  collection,
-  query,
-  orderBy,
-  limit,
-  onSnapshot,
-  doc,
-  updateDoc,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { Call, CallStats } from '@/types/call';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/lib/api/client';
 
 interface UseCallsResult {
   calls: Call[];
@@ -22,35 +12,6 @@ interface UseCallsResult {
   error: string | null;
   refreshCalls: () => void;
   toggleHandled: (callId: string) => Promise<void>;
-}
-
-// Convert Firestore document data to Call type
-function docToCall(docId: string, data: Record<string, unknown>): Call {
-  return {
-    id: docId,
-    callSid: (data.callSid as string) || '',
-    phoneNumber: (data.phoneNumber as string) || '',
-    callerName: (data.callerName as string) || null,
-    status: (data.status as Call['status']) || 'completed',
-    isHandled: (data.isHandled as boolean) || false,
-    startTime: data.startTime instanceof Timestamp
-      ? data.startTime.toDate().toISOString()
-      : (data.startTime as string) || new Date().toISOString(),
-    endTime: data.endTime instanceof Timestamp
-      ? data.endTime.toDate().toISOString()
-      : (data.endTime as string) || undefined,
-    durationSeconds: (data.durationSeconds as number) || 0,
-    aiSummary: (data.aiSummary as string) || '',
-    transcript: (data.transcript as Call['transcript']) || [],
-    intent: (data.intent as string) || 'Unknown',
-    isUrgent: (data.isUrgent as boolean) || false,
-    createdAt: data.createdAt instanceof Timestamp
-      ? data.createdAt.toDate().toISOString()
-      : (data.createdAt as string) || new Date().toISOString(),
-    updatedAt: data.updatedAt instanceof Timestamp
-      ? data.updatedAt.toDate().toISOString()
-      : (data.updatedAt as string) || new Date().toISOString(),
-  };
 }
 
 // Calculate stats from calls array
@@ -98,61 +59,38 @@ export function useCalls(): UseCallsResult {
   const [refreshKey, setRefreshKey] = useState(0);
   const { user } = useAuth();
 
-  // Check if Firestore is disabled (stubbed)
-  const isFirestoreDisabled = (db as any)?._stub === true;
-
-  // Real-time listener for calls
+  // Fetch calls from API
   useEffect(() => {
-    // If Firestore is disabled, return empty calls
-    if (isFirestoreDisabled) {
-      setCalls([]);
-      setLoading(false);
-      return;
-    }
-
     if (!user?.uid) {
       setCalls([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    const fetchCalls = async () => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const callsRef = collection(db, 'calls');
+      try {
+        const response = await authenticatedFetch('/api/calls');
 
-      // Query: order by startTime descending, limit to 100
-      const q = query(
-        callsRef,
-        orderBy('startTime', 'desc'),
-        limit(100)
-      );
-
-      // Subscribe to real-time updates
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const callsList: Call[] = snapshot.docs.map((doc) =>
-            docToCall(doc.id, doc.data() as Record<string, unknown>)
-          );
-          setCalls(callsList);
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Error fetching calls:', err);
-          setError('Failed to load calls');
-          setLoading(false);
+        if (!response.ok) {
+          throw new Error('Failed to fetch calls');
         }
-      );
 
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Error setting up calls listener:', err);
-      setError('Failed to load calls');
-      setLoading(false);
-    }
-  }, [user?.uid, refreshKey, isFirestoreDisabled]);
+        const data = await response.json();
+        setCalls(data.calls || []);
+      } catch (err) {
+        console.error('Error fetching calls:', err);
+        setError('Failed to load calls');
+        setCalls([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalls();
+  }, [user?.uid, refreshKey]);
 
   // Calculate stats from calls (memoized)
   const stats = useMemo(() => {
@@ -160,14 +98,14 @@ export function useCalls(): UseCallsResult {
     return calculateStats(calls);
   }, [calls, loading]);
 
-  // Manual refresh function (triggers re-subscription)
+  // Manual refresh function
   const refreshCalls = useCallback(() => {
     setRefreshKey(prev => prev + 1);
   }, []);
 
   // Toggle handled status with optimistic update
   const toggleHandled = useCallback(async (callId: string) => {
-    if (isFirestoreDisabled || !user) return;
+    if (!user) return;
 
     // Find current call to get current handled state
     const call = calls.find(c => c.id === callId);
@@ -175,7 +113,7 @@ export function useCalls(): UseCallsResult {
 
     const newHandledState = !call.isHandled;
 
-    // Optimistic update - Firestore listener will sync if needed
+    // Optimistic update
     setCalls(prevCalls =>
       prevCalls.map(c =>
         c.id === callId ? { ...c, isHandled: newHandledState } : c
@@ -183,12 +121,15 @@ export function useCalls(): UseCallsResult {
     );
 
     try {
-      // Update directly in Firestore (client SDK)
-      const callRef = doc(db, 'calls', callId);
-      await updateDoc(callRef, {
-        isHandled: newHandledState,
-        updatedAt: Timestamp.now(),
+      const response = await authenticatedFetch(`/api/calls/${callId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isHandled: newHandledState }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to update call');
+      }
     } catch (err) {
       console.error('Error updating call:', err);
       // Revert optimistic update on error
@@ -198,7 +139,7 @@ export function useCalls(): UseCallsResult {
         )
       );
     }
-  }, [user, calls, isFirestoreDisabled]);
+  }, [user, calls]);
 
   return {
     calls,

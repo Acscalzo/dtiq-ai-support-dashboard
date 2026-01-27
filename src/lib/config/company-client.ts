@@ -48,6 +48,12 @@ export function extractCompanyFromHostname(hostname: string): string {
     return DEFAULT_COMPANY
   }
 
+  // Handle Vercel preview/production URLs (e.g., "ai-support-dashboard-xxx.vercel.app")
+  // These should use the default company, not try to parse a company from the subdomain
+  if (parts.includes('vercel') && parts.includes('app')) {
+    return DEFAULT_COMPANY
+  }
+
   return subdomain
 }
 
