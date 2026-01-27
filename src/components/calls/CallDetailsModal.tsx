@@ -12,6 +12,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { authenticatedFetch } from '@/lib/api/client';
+import { getClientBranding } from '@/config/branding-client';
 import type { Call } from '@/types/call';
 import { CallStatusBadge, HandledBadge } from './CallStatusBadge';
 import {
@@ -34,6 +35,7 @@ export function CallDetailsModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [call, setCall] = useState<Call>(initialCall);
+  const branding = getClientBranding();
 
   // Fetch call updates (polling for in-progress calls)
   const fetchCallUpdate = useCallback(async () => {
@@ -277,7 +279,7 @@ export function CallDetailsModal({
                             : 'text-gray-600 dark:text-gray-400'
                         }`}
                       >
-                        {entry.speaker === 'AI' ? 'DTIQ Assistant' : 'Caller'}
+                        {entry.speaker === 'AI' ? `${branding.companyName} Assistant` : 'Caller'}
                       </p>
                       <div
                         className={`inline-block px-3 py-2 rounded-lg text-sm ${
