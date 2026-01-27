@@ -43,6 +43,7 @@ export const brandingConfigs: Record<CompanySlug, BrandingConfig> = {
     primaryColor: '#0066CC',
     logoText: 'DTIQ',
     tagline: 'Video Intelligence Solutions',
+    logoUrl: '/DTiQ-Logo.svg',
   },
   qwilt: {
     companyName: 'Qwilt',
@@ -50,6 +51,7 @@ export const brandingConfigs: Record<CompanySlug, BrandingConfig> = {
     primaryColor: '#8B5CF6',
     logoText: 'Q',
     tagline: 'Content Delivery Network',
+    logoUrl: '/quilt.png',
   },
   packetfabric: {
     companyName: 'PacketFabric',
@@ -57,6 +59,7 @@ export const brandingConfigs: Record<CompanySlug, BrandingConfig> = {
     primaryColor: '#10B981',
     logoText: 'PF',
     tagline: 'Network as a Service',
+    logoUrl: '/packetfabric-logo-v2-dark.svg',
   },
   welink: {
     companyName: 'Welink',
@@ -64,6 +67,7 @@ export const brandingConfigs: Record<CompanySlug, BrandingConfig> = {
     primaryColor: '#F59E0B',
     logoText: 'W',
     tagline: 'Connectivity Solutions',
+    logoUrl: '/welink.svg',
   },
   element8: {
     companyName: 'Element8',
@@ -71,6 +75,7 @@ export const brandingConfigs: Record<CompanySlug, BrandingConfig> = {
     primaryColor: '#EF4444',
     logoText: 'E8',
     tagline: 'Data Center Services',
+    logoUrl: '/element8.png',
   },
 }
 
