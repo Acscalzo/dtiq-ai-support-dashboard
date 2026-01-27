@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { adminAuth } from '@/lib/firebase/admin';
+import { getPrisma } from '@/lib/db/prisma';
 import { UserProfile, UserRole } from '@/types/auth';
 
 export interface AuthenticatedRequest extends NextRequest {
@@ -9,6 +10,9 @@ export interface AuthenticatedRequest extends NextRequest {
 /**
  * Verify Firebase token from Authorization header
  * Returns user profile if valid, throws error if invalid
+ *
+ * Uses Firebase Auth for token verification, PostgreSQL for user data storage.
+ * Creates user in PostgreSQL if they don't exist (first login after migration).
  */
 export async function verifyAuthToken(request: NextRequest): Promise<UserProfile> {
   try {
@@ -22,26 +26,36 @@ export async function verifyAuthToken(request: NextRequest): Promise<UserProfile
 
     // Verify the Firebase ID token
     const decodedToken = await adminAuth.verifyIdToken(token);
+    const prisma = getPrisma();
 
-    // Get user profile from Firestore
-    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
+    // Get or create user profile in PostgreSQL
+    let user = await prisma.user.findUnique({
+      where: { id: decodedToken.uid },
+    });
 
-    if (!userDoc.exists) {
-      throw new Error('User profile not found');
+    // If user doesn't exist in PostgreSQL, create them (handles migration from Firestore)
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          id: decodedToken.uid,
+          email: decodedToken.email || '',
+          displayName: decodedToken.name || decodedToken.email?.split('@')[0] || null,
+          role: 'agent', // Default role for new users
+          photoURL: decodedToken.picture || null,
+        },
+      });
     }
 
-    const userData = userDoc.data();
-
     const userProfile: UserProfile = {
-      uid: userData!.uid,
-      email: userData!.email,
-      displayName: userData!.displayName,
-      role: userData!.role,
-      createdAt: userData!.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      updatedAt: userData!.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      photoURL: userData!.photoURL || null,
-      phone: userData!.phone || null,
-      title: userData!.title || null,
+      uid: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role as UserRole,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+      photoURL: user.photoURL || null,
+      phone: user.phone || null,
+      title: user.title || null,
     };
 
     return userProfile;

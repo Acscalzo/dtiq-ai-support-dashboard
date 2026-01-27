@@ -1,46 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
-import { adminDb } from '@/lib/firebase/admin';
-import { getCompany } from '@/lib/config/company';
+import { getPrisma } from '@/lib/db/prisma';
 
 /**
  * POST /api/notifications/mark-all-read
  * Mark all notifications as read for the current user
- * Multi-tenant: Updates notifications in current company's Firebase
+ * Multi-tenant: Updates notifications in current company's PostgreSQL database
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
-    // Get all unread notifications for this user
-    const snapshot = await adminDb
-      .collection('notifications')
-      .where('userId', '==', user.uid)
-      .where('read', '==', false)
-      .get();
-
-    if (snapshot.empty) {
-      return NextResponse.json({
-        success: true,
-        data: { updated: 0 },
-      });
-    }
-
-    // Batch update all unread notifications
-    const batch = adminDb.batch();
-
-    snapshot.docs.forEach((doc) => {
-      batch.update(doc.ref, { read: true });
+    // Update all unread notifications for this user
+    const result = await prisma.notification.updateMany({
+      where: {
+        userId: user.uid,
+        read: false,
+      },
+      data: {
+        read: true,
+      },
     });
-
-    await batch.commit();
 
     return NextResponse.json({
       success: true,
-      data: { updated: snapshot.size },
+      data: { updated: result.count },
     });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);

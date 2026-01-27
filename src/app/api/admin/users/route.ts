@@ -3,19 +3,15 @@ import { ApiResponse } from '@/types/api';
 import { UserProfile } from '@/types/auth';
 import { verifyAuthToken, hasRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
-import { adminDb } from '@/lib/firebase/admin';
-import { getCompany } from '@/lib/config/company';
+import { getPrisma } from '@/lib/db/prisma';
 
 /**
  * GET /api/admin/users
  * Returns list of all users (admin only)
- * Multi-tenant: Returns users from current company's Firebase
+ * Multi-tenant: Returns users from current company's PostgreSQL database
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<UserProfile[]>>> {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     // Verify authentication and admin role
     const user = await verifyAuthToken(request);
 
@@ -23,23 +19,24 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       return forbiddenResponse('Admin access required');
     }
 
-    // Fetch all users from Firestore
-    const usersSnapshot = await adminDb.collection('users').orderBy('createdAt', 'desc').get();
+    const prisma = getPrisma();
 
-    const users: UserProfile[] = usersSnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        uid: data.uid,
-        email: data.email,
-        displayName: data.displayName,
-        role: data.role,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        photoURL: data.photoURL || null,
-        phone: data.phone || null,
-        title: data.title || null,
-      };
+    // Fetch all users from PostgreSQL
+    const dbUsers = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
     });
+
+    const users: UserProfile[] = dbUsers.map(u => ({
+      uid: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      role: u.role as UserProfile['role'],
+      createdAt: u.createdAt.toISOString(),
+      updatedAt: u.updatedAt.toISOString(),
+      photoURL: u.photoURL || null,
+      phone: u.phone || null,
+      title: u.title || null,
+    }));
 
     return NextResponse.json({
       success: true,

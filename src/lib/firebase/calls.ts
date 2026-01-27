@@ -1,82 +1,98 @@
-import { adminDb } from './admin';
-import { Call, CallStats, CallFilters } from '@/types/call';
-import admin from 'firebase-admin';
+import { getPrisma } from '@/lib/db/prisma';
+import { Call, CallStats, CallFilters, TranscriptEntry } from '@/types/call';
+import { Prisma } from '@prisma/client';
 
-const CALLS_COLLECTION = 'calls';
+// Convert Prisma Call record to Call type
+type PrismaCall = {
+  id: string;
+  callSid: string;
+  phoneNumber: string;
+  callerName: string | null;
+  status: string;
+  isHandled: boolean;
+  startTime: Date;
+  endTime: Date | null;
+  durationSeconds: number;
+  aiSummary: string;
+  transcript: Prisma.JsonValue;
+  intent: string;
+  isUrgent: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-// Convert Firestore document to Call type
-function docToCall(doc: admin.firestore.DocumentSnapshot): Call {
-  const data = doc.data();
-  if (!data) throw new Error('Document data is undefined');
-
+function prismaCallToCall(record: PrismaCall): Call {
   return {
-    id: doc.id,
-    callSid: data.callSid || '',
-    phoneNumber: data.phoneNumber || '',
-    callerName: data.callerName || null,
-    status: data.status || 'completed',
-    isHandled: data.isHandled || false,
-    startTime: data.startTime?.toDate?.()?.toISOString() || data.startTime || new Date().toISOString(),
-    endTime: data.endTime?.toDate?.()?.toISOString() || data.endTime || undefined,
-    durationSeconds: data.durationSeconds || 0,
-    aiSummary: data.aiSummary || '',
-    transcript: data.transcript || [],
-    intent: data.intent || 'Unknown',
-    isUrgent: data.isUrgent || false,
-    createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
-    updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt || new Date().toISOString(),
+    id: record.id,
+    callSid: record.callSid,
+    phoneNumber: record.phoneNumber,
+    callerName: record.callerName,
+    status: record.status as Call['status'],
+    isHandled: record.isHandled,
+    startTime: record.startTime.toISOString(),
+    endTime: record.endTime?.toISOString(),
+    durationSeconds: record.durationSeconds,
+    aiSummary: record.aiSummary,
+    transcript: (record.transcript as unknown as TranscriptEntry[]) || [],
+    intent: record.intent,
+    isUrgent: record.isUrgent,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
   };
 }
 
 // Get all calls with optional filtering
 export async function getCalls(filters?: CallFilters): Promise<Call[]> {
-  let query: admin.firestore.Query = adminDb.collection(CALLS_COLLECTION);
+  const prisma = getPrisma();
+
+  const where: Prisma.CallWhereInput = {};
 
   // Apply filters
   if (filters?.status) {
-    query = query.where('status', '==', filters.status);
+    where.status = filters.status;
   }
 
   if (filters?.isHandled !== undefined) {
-    query = query.where('isHandled', '==', filters.isHandled);
+    where.isHandled = filters.isHandled;
   }
 
   if (filters?.isUrgent !== undefined) {
-    query = query.where('isUrgent', '==', filters.isUrgent);
+    where.isUrgent = filters.isUrgent;
   }
 
-  // Order by start time descending (newest first)
-  query = query.orderBy('startTime', 'desc');
-
-  // Limit to recent calls
-  query = query.limit(100);
-
-  const snapshot = await query.get();
-  const calls = snapshot.docs.map(docToCall);
-
-  // Apply client-side search if provided
+  // Search filter (case-insensitive)
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase();
-    return calls.filter(call =>
-      call.phoneNumber.toLowerCase().includes(searchLower) ||
-      call.callerName?.toLowerCase().includes(searchLower) ||
-      call.aiSummary.toLowerCase().includes(searchLower) ||
-      call.intent.toLowerCase().includes(searchLower)
-    );
+    where.OR = [
+      { phoneNumber: { contains: searchLower, mode: 'insensitive' } },
+      { callerName: { contains: searchLower, mode: 'insensitive' } },
+      { aiSummary: { contains: searchLower, mode: 'insensitive' } },
+      { intent: { contains: searchLower, mode: 'insensitive' } },
+    ];
   }
 
-  return calls;
+  const calls = await prisma.call.findMany({
+    where,
+    orderBy: { startTime: 'desc' },
+    take: 100,
+  });
+
+  return calls.map(prismaCallToCall);
 }
 
 // Get a single call by ID
 export async function getCallById(callId: string): Promise<Call | null> {
-  const doc = await adminDb.collection(CALLS_COLLECTION).doc(callId).get();
+  const prisma = getPrisma();
 
-  if (!doc.exists) {
+  const call = await prisma.call.findUnique({
+    where: { id: callId },
+  });
+
+  if (!call) {
     return null;
   }
 
-  return docToCall(doc);
+  return prismaCallToCall(call);
 }
 
 // Update a call (e.g., mark as handled)
@@ -84,61 +100,68 @@ export async function updateCall(
   callId: string,
   updates: Partial<Omit<Call, 'id' | 'callSid' | 'createdAt'>>
 ): Promise<Call | null> {
-  const docRef = adminDb.collection(CALLS_COLLECTION).doc(callId);
-  const doc = await docRef.get();
+  const prisma = getPrisma();
 
-  if (!doc.exists) {
+  try {
+    const updatedCall = await prisma.call.update({
+      where: { id: callId },
+      data: {
+        ...(updates.phoneNumber !== undefined && { phoneNumber: updates.phoneNumber }),
+        ...(updates.callerName !== undefined && { callerName: updates.callerName }),
+        ...(updates.status !== undefined && { status: updates.status }),
+        ...(updates.isHandled !== undefined && { isHandled: updates.isHandled }),
+        ...(updates.endTime !== undefined && { endTime: updates.endTime ? new Date(updates.endTime) : null }),
+        ...(updates.durationSeconds !== undefined && { durationSeconds: updates.durationSeconds }),
+        ...(updates.aiSummary !== undefined && { aiSummary: updates.aiSummary }),
+        ...(updates.transcript !== undefined && { transcript: JSON.parse(JSON.stringify(updates.transcript)) }),
+        ...(updates.intent !== undefined && { intent: updates.intent }),
+        ...(updates.isUrgent !== undefined && { isUrgent: updates.isUrgent }),
+      },
+    });
+
+    return prismaCallToCall(updatedCall);
+  } catch {
     return null;
   }
-
-  await docRef.update({
-    ...updates,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  const updatedDoc = await docRef.get();
-  return docToCall(updatedDoc);
 }
 
 // Get call statistics
 export async function getCallStats(): Promise<CallStats> {
+  const prisma = getPrisma();
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Get all calls for stats
-  const allCallsSnapshot = await adminDb.collection(CALLS_COLLECTION).get();
-  const allCalls = allCallsSnapshot.docs.map(docToCall);
-
-  // Calculate stats
-  const totalCalls = allCalls.length;
-
-  const callsToday = allCalls.filter(call => {
-    const callDate = new Date(call.startTime);
-    return callDate >= startOfToday;
-  }).length;
-
-  const needsAttention = allCalls.filter(
-    call => !call.isHandled && call.status !== 'in_progress'
-  ).length;
-
-  const inProgress = allCalls.filter(call => call.status === 'in_progress').length;
-
-  const completedCalls = allCalls.filter(
-    call => call.status === 'completed' && call.durationSeconds > 0
-  );
-
-  const avgDurationSeconds = completedCalls.length > 0
-    ? Math.round(
-        completedCalls.reduce((sum, call) => sum + call.durationSeconds, 0) /
-        completedCalls.length
-      )
-    : 0;
+  // Get counts using efficient queries
+  const [totalCalls, callsToday, needsAttention, inProgress, avgResult] = await Promise.all([
+    prisma.call.count(),
+    prisma.call.count({
+      where: {
+        startTime: { gte: startOfToday },
+      },
+    }),
+    prisma.call.count({
+      where: {
+        isHandled: false,
+        status: { not: 'in_progress' },
+      },
+    }),
+    prisma.call.count({
+      where: { status: 'in_progress' },
+    }),
+    prisma.call.aggregate({
+      _avg: { durationSeconds: true },
+      where: {
+        status: 'completed',
+        durationSeconds: { gt: 0 },
+      },
+    }),
+  ]);
 
   return {
     totalCalls,
     callsToday,
     needsAttention,
-    avgDurationSeconds,
+    avgDurationSeconds: Math.round(avgResult._avg.durationSeconds || 0),
     inProgress,
   };
 }
@@ -150,8 +173,12 @@ export async function markCallHandled(callId: string, isHandled: boolean): Promi
 
 // Delete a call (admin only)
 export async function deleteCall(callId: string): Promise<boolean> {
+  const prisma = getPrisma();
+
   try {
-    await adminDb.collection(CALLS_COLLECTION).doc(callId).delete();
+    await prisma.call.delete({
+      where: { id: callId },
+    });
     return true;
   } catch {
     return false;

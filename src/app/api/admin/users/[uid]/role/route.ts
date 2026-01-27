@@ -3,23 +3,18 @@ import { ApiResponse } from '@/types/api';
 import { UserRole } from '@/types/auth';
 import { verifyAuthToken, hasRole } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse, forbiddenResponse } from '@/lib/auth/apiErrors';
-import { adminDb } from '@/lib/firebase/admin';
-import { Timestamp } from 'firebase-admin/firestore';
-import { getCompany } from '@/lib/config/company';
+import { getPrisma } from '@/lib/db/prisma';
 
 /**
  * PATCH /api/admin/users/[uid]/role
  * Update user role (admin only)
- * Multi-tenant: Updates user in current company's Firebase
+ * Multi-tenant: Updates user in current company's PostgreSQL database
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { uid: string } }
+  { params }: { params: Promise<{ uid: string }> }
 ): Promise<NextResponse<ApiResponse<{ success: boolean }>>> {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     // Verify authentication and admin role
     const user = await verifyAuthToken(request);
 
@@ -28,7 +23,7 @@ export async function PATCH(
     }
 
     const { role } = await request.json() as { role: UserRole };
-    const targetUid = params.uid;
+    const { uid: targetUid } = await params;
 
     // Validate role
     if (!['admin', 'manager', 'agent'].includes(role)) {
@@ -52,10 +47,12 @@ export async function PATCH(
       );
     }
 
-    // Update user role in Firestore
-    await adminDb.collection('users').doc(targetUid).update({
-      role,
-      updatedAt: Timestamp.now(),
+    const prisma = getPrisma();
+
+    // Update user role in PostgreSQL
+    await prisma.user.update({
+      where: { id: targetUid },
+      data: { role },
     });
 
     return NextResponse.json({

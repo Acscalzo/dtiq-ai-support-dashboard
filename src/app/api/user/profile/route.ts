@@ -3,20 +3,15 @@ import { ApiResponse } from '@/types/api';
 import { UserProfile } from '@/types/auth';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse } from '@/lib/auth/apiErrors';
-import { adminDb } from '@/lib/firebase/admin';
-import { FieldValue } from 'firebase-admin/firestore';
-import { getCompany } from '@/lib/config/company';
+import { getPrisma } from '@/lib/db/prisma';
 
 /**
  * GET /api/user/profile
  * Returns the current user's profile
- * Multi-tenant: Returns profile from current company's Firebase
+ * Multi-tenant: Returns profile from current company's PostgreSQL database
  */
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<UserProfile>>> {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
 
     return NextResponse.json({
@@ -48,14 +43,12 @@ interface UpdateProfileRequest {
 /**
  * PATCH /api/user/profile
  * Updates the current user's profile
- * Multi-tenant: Updates profile in current company's Firebase
+ * Multi-tenant: Updates profile in current company's PostgreSQL database
  */
 export async function PATCH(request: NextRequest): Promise<NextResponse<ApiResponse<UserProfile>>> {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     const body: UpdateProfileRequest = await request.json();
 
@@ -120,9 +113,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<ApiRespo
     }
 
     // Build update object
-    const updateData: Record<string, unknown> = {
-      updatedAt: FieldValue.serverTimestamp(),
-    };
+    const updateData: { displayName?: string; phone?: string | null; title?: string | null } = {};
 
     if (body.displayName !== undefined) {
       updateData.displayName = body.displayName.trim();
@@ -134,23 +125,22 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<ApiRespo
       updateData.title = body.title?.trim() || null;
     }
 
-    // Update user document
-    await adminDb.collection('users').doc(user.uid).update(updateData);
-
-    // Fetch updated profile
-    const updatedDoc = await adminDb.collection('users').doc(user.uid).get();
-    const updatedData = updatedDoc.data();
+    // Update user in PostgreSQL
+    const updatedUser = await prisma.user.update({
+      where: { id: user.uid },
+      data: updateData,
+    });
 
     const updatedProfile: UserProfile = {
-      uid: updatedData!.uid,
-      email: updatedData!.email,
-      displayName: updatedData!.displayName,
-      role: updatedData!.role,
-      createdAt: updatedData!.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      updatedAt: updatedData!.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      photoURL: updatedData!.photoURL || null,
-      phone: updatedData!.phone || null,
-      title: updatedData!.title || null,
+      uid: updatedUser.id,
+      email: updatedUser.email,
+      displayName: updatedUser.displayName,
+      role: updatedUser.role as UserProfile['role'],
+      createdAt: updatedUser.createdAt.toISOString(),
+      updatedAt: updatedUser.updatedAt.toISOString(),
+      photoURL: updatedUser.photoURL || null,
+      phone: updatedUser.phone || null,
+      title: updatedUser.title || null,
     };
 
     return NextResponse.json({

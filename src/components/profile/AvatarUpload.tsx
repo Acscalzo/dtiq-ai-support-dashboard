@@ -4,9 +4,8 @@ import { useState, useRef, useCallback } from 'react';
 import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Camera, Upload, Loader2, X, Check, ZoomIn, ZoomOut } from 'lucide-react';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { uploadAvatar, deleteAvatar, compressImage } from '@/lib/firebase/storage';
+import { authenticatedFetch } from '@/lib/api/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AvatarUploadProps {
@@ -171,7 +170,7 @@ export function AvatarUpload({
           await deleteAvatar(user.uid, currentPhotoURL);
         }
       } else {
-        // Store as base64 in Firestore (fallback)
+        // Store as base64 (fallback)
         photoURL = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -179,11 +178,17 @@ export function AvatarUpload({
         });
       }
 
-      // Update user document with new photo URL
-      await updateDoc(doc(db, 'users', user.uid), {
-        photoURL,
-        updatedAt: Timestamp.now(),
+      // Update user via API
+      const response = await authenticatedFetch('/api/user/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoURL }),
       });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update avatar');
+      }
 
       setShowCropModal(false);
       setImageSrc(null);
@@ -220,15 +225,15 @@ export function AvatarUpload({
       setLoading(true);
       setError(null);
 
-      // Delete from Firebase Storage if applicable
-      if (currentPhotoURL && !currentPhotoURL.startsWith('data:')) {
-        await deleteAvatar(user.uid, currentPhotoURL);
-      }
-
-      await updateDoc(doc(db, 'users', user.uid), {
-        photoURL: null,
-        updatedAt: Timestamp.now(),
+      // Delete via API (handles both storage and database)
+      const response = await authenticatedFetch('/api/user/avatar', {
+        method: 'DELETE',
       });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to remove avatar');
+      }
 
       onSuccess();
     } catch (err) {

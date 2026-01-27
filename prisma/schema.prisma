@@ -116,3 +116,82 @@ model Setting {
   value     Json
   updatedAt DateTime @updatedAt
 }
+
+// User profile synced from Firebase Auth
+model User {
+  id            String           @id // Firebase UID
+  email         String           @unique
+  displayName   String?
+  role          String           @default("agent") // "admin", "manager", "agent"
+  photoURL      String?
+  phone         String?
+  title         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  preferences   UserPreferences?
+  calls         Call[]           @relation("HandledBy")
+  notifications Notification[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "ticket", "insight", "system", etc.
+  title     String
+  message   String
+  actionUrl String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model UserPreferences {
+  id                         String   @id @default(cuid())
+  userId                     String   @unique
+  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Notification preferences
+  emailNewTickets            Boolean  @default(true)
+  emailAssignedTickets       Boolean  @default(true)
+  emailAiInsights            Boolean  @default(false)
+  browserPushNotifications   Boolean  @default(false)
+  // Display preferences
+  timezone                   String   @default("America/New_York")
+  dateFormat                 String   @default("MM/DD/YYYY") // "MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Call {
+  id              String    @id @default(cuid())
+  callSid         String    @unique
+  phoneNumber     String
+  callerName      String?
+  status          String    @default("completed") // "in_progress", "completed", "failed", "no_answer"
+  isHandled       Boolean   @default(false)
+  startTime       DateTime
+  endTime         DateTime?
+  durationSeconds Int       @default(0)
+  aiSummary       String    @default("")
+  transcript      Json      @default("[]") // Array of {speaker, text, timestamp}
+  intent          String    @default("Unknown")
+  isUrgent        Boolean   @default(false)
+  handledById     String?
+  handledBy       User?     @relation("HandledBy", fields: [handledById], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([isHandled])
+  @@index([isUrgent])
+  @@index([startTime])
+  @@index([callSid])
+}

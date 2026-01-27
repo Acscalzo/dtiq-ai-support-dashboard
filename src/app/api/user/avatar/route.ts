@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ApiResponse } from '@/types/api';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
 import { unauthorizedResponse } from '@/lib/auth/apiErrors';
-import { adminDb } from '@/lib/firebase/admin';
+import { getPrisma } from '@/lib/db/prisma';
 import { getStorage } from 'firebase-admin/storage';
-import { FieldValue } from 'firebase-admin/firestore';
-import { getCompany } from '@/lib/config/company';
 
 interface AvatarResponse {
   photoURL: string | null;
@@ -14,14 +12,12 @@ interface AvatarResponse {
 /**
  * POST /api/user/avatar
  * Upload a new avatar (expects base64 image data or URL)
- * Multi-tenant: Uploads to current company's Firebase Storage
+ * Multi-tenant: Stores URL reference in PostgreSQL, files in Firebase Storage
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<AvatarResponse>>> {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     const body = await request.json();
     const { photoURL } = body;
@@ -47,10 +43,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       );
     }
 
-    // Update user document with new photo URL
-    await adminDb.collection('users').doc(user.uid).update({
-      photoURL,
-      updatedAt: FieldValue.serverTimestamp(),
+    // Update user in PostgreSQL with new photo URL
+    await prisma.user.update({
+      where: { id: user.uid },
+      data: { photoURL },
     });
 
     return NextResponse.json({
@@ -76,18 +72,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 /**
  * DELETE /api/user/avatar
  * Remove the user's avatar
- * Multi-tenant: Deletes from current company's Firebase Storage
+ * Multi-tenant: Removes URL from PostgreSQL, deletes file from Firebase Storage
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse<ApiResponse<AvatarResponse>>> {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     // Get current photo URL to potentially delete from storage
-    const userDoc = await adminDb.collection('users').doc(user.uid).get();
-    const currentPhotoURL = userDoc.data()?.photoURL;
+    const currentUser = await prisma.user.findUnique({
+      where: { id: user.uid },
+      select: { photoURL: true },
+    });
+    const currentPhotoURL = currentUser?.photoURL;
 
     // If the photo is stored in Firebase Storage, delete it
     if (currentPhotoURL && currentPhotoURL.includes('firebasestorage.googleapis.com')) {
@@ -107,10 +104,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse<ApiResp
       }
     }
 
-    // Remove photo URL from user document
-    await adminDb.collection('users').doc(user.uid).update({
-      photoURL: null,
-      updatedAt: FieldValue.serverTimestamp(),
+    // Remove photo URL from user in PostgreSQL
+    await prisma.user.update({
+      where: { id: user.uid },
+      data: { photoURL: null },
     });
 
     return NextResponse.json({

@@ -1,64 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthToken } from '@/lib/auth/apiAuth';
-import { adminDb } from '@/lib/firebase/admin';
+import { getPrisma } from '@/lib/db/prisma';
 import { Notification, CreateNotificationInput } from '@/types/notifications';
-import { FieldValue } from 'firebase-admin/firestore';
-import { getCompany } from '@/lib/config/company';
 
 /**
  * GET /api/notifications
  * Get notifications for the current user
- * Multi-tenant: Returns notifications from current company's Firebase
+ * Multi-tenant: Returns notifications from current company's PostgreSQL database
  * Query params:
  *   - unreadOnly: boolean (default: false)
  *   - limit: number (default: 50, max: 100)
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const limitParam = parseInt(searchParams.get('limit') || '50', 10);
     const limit = Math.min(Math.max(1, limitParam), 100);
 
-    let query = adminDb
-      .collection('notifications')
-      .where('userId', '==', user.uid)
-      .orderBy('createdAt', 'desc')
-      .limit(limit);
-
-    if (unreadOnly) {
-      query = adminDb
-        .collection('notifications')
-        .where('userId', '==', user.uid)
-        .where('read', '==', false)
-        .orderBy('createdAt', 'desc')
-        .limit(limit);
-    }
-
-    const snapshot = await query.get();
-
-    const notifications: Notification[] = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        userId: data.userId,
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        read: data.read,
-        actionUrl: data.actionUrl,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      };
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId: user.uid,
+        ...(unreadOnly ? { read: false } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
     });
+
+    const formattedNotifications: Notification[] = notifications.map((n) => ({
+      id: n.id,
+      userId: n.userId,
+      type: n.type as Notification['type'],
+      title: n.title,
+      message: n.message,
+      read: n.read,
+      actionUrl: n.actionUrl ?? undefined,
+      createdAt: n.createdAt.toISOString(),
+    }));
 
     return NextResponse.json({
       success: true,
-      data: notifications,
+      data: formattedNotifications,
     });
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -80,14 +65,12 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/notifications
  * Create a new notification (internal use / admin only)
- * Multi-tenant: Creates notification in current company's Firebase
+ * Multi-tenant: Creates notification in current company's PostgreSQL database
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     // Only admins can create notifications via API
     if (user.role !== 'admin') {
@@ -106,19 +89,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const docRef = await adminDb.collection('notifications').add({
-      userId: body.userId,
-      type: body.type,
-      title: body.title,
-      message: body.message,
-      actionUrl: body.actionUrl || null,
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
+    const notification = await prisma.notification.create({
+      data: {
+        userId: body.userId,
+        type: body.type,
+        title: body.title,
+        message: body.message,
+        actionUrl: body.actionUrl || null,
+        read: false,
+      },
     });
 
     return NextResponse.json({
       success: true,
-      data: { id: docRef.id },
+      data: { id: notification.id },
     });
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -140,15 +124,13 @@ export async function POST(request: NextRequest) {
 /**
  * PATCH /api/notifications
  * Mark a notification as read
- * Multi-tenant: Updates notification in current company's Firebase
+ * Multi-tenant: Updates notification in current company's PostgreSQL database
  * Body: { id: string }
  */
 export async function PATCH(request: NextRequest) {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     const body = await request.json();
     const { id } = body;
@@ -160,10 +142,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const notificationRef = adminDb.collection('notifications').doc(id);
-    const notificationDoc = await notificationRef.get();
+    const notification = await prisma.notification.findUnique({
+      where: { id },
+    });
 
-    if (!notificationDoc.exists) {
+    if (!notification) {
       return NextResponse.json(
         { success: false, error: 'Notification not found' },
         { status: 404 }
@@ -171,14 +154,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Verify ownership
-    if (notificationDoc.data()?.userId !== user.uid) {
+    if (notification.userId !== user.uid) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },
         { status: 403 }
       );
     }
 
-    await notificationRef.update({ read: true });
+    await prisma.notification.update({
+      where: { id },
+      data: { read: true },
+    });
 
     return NextResponse.json({
       success: true,
@@ -204,15 +190,13 @@ export async function PATCH(request: NextRequest) {
 /**
  * DELETE /api/notifications
  * Delete a notification
- * Multi-tenant: Deletes notification from current company's Firebase
+ * Multi-tenant: Deletes notification from current company's PostgreSQL database
  * Query params: id
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Get current company from subdomain
-    const company = getCompany();
-
     const user = await verifyAuthToken(request);
+    const prisma = getPrisma();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -224,10 +208,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const notificationRef = adminDb.collection('notifications').doc(id);
-    const notificationDoc = await notificationRef.get();
+    const notification = await prisma.notification.findUnique({
+      where: { id },
+    });
 
-    if (!notificationDoc.exists) {
+    if (!notification) {
       return NextResponse.json(
         { success: false, error: 'Notification not found' },
         { status: 404 }
@@ -235,14 +220,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify ownership
-    if (notificationDoc.data()?.userId !== user.uid) {
+    if (notification.userId !== user.uid) {
       return NextResponse.json(
         { success: false, error: 'Forbidden' },
         { status: 403 }
       );
     }
 
-    await notificationRef.delete();
+    await prisma.notification.delete({
+      where: { id },
+    });
 
     return NextResponse.json({
       success: true,

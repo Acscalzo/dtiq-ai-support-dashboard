@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   X,
   Phone,
@@ -11,8 +11,7 @@ import {
   AlertTriangle,
   Tag,
 } from 'lucide-react';
-import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { authenticatedFetch } from '@/lib/api/client';
 import type { Call } from '@/types/call';
 import { CallStatusBadge, HandledBadge } from './CallStatusBadge';
 import {
@@ -27,35 +26,6 @@ interface CallDetailsModalProps {
   onToggleHandled: (callId: string) => void;
 }
 
-// Convert Firestore document data to Call type
-function docToCall(docId: string, data: Record<string, unknown>): Call {
-  return {
-    id: docId,
-    callSid: (data.callSid as string) || '',
-    phoneNumber: (data.phoneNumber as string) || '',
-    callerName: (data.callerName as string) || null,
-    status: (data.status as Call['status']) || 'completed',
-    isHandled: (data.isHandled as boolean) || false,
-    startTime: data.startTime instanceof Timestamp
-      ? data.startTime.toDate().toISOString()
-      : (data.startTime as string) || new Date().toISOString(),
-    endTime: data.endTime instanceof Timestamp
-      ? data.endTime.toDate().toISOString()
-      : (data.endTime as string) || undefined,
-    durationSeconds: (data.durationSeconds as number) || 0,
-    aiSummary: (data.aiSummary as string) || '',
-    transcript: (data.transcript as Call['transcript']) || [],
-    intent: (data.intent as string) || 'Unknown',
-    isUrgent: (data.isUrgent as boolean) || false,
-    createdAt: data.createdAt instanceof Timestamp
-      ? data.createdAt.toDate().toISOString()
-      : (data.createdAt as string) || new Date().toISOString(),
-    updatedAt: data.updatedAt instanceof Timestamp
-      ? data.updatedAt.toDate().toISOString()
-      : (data.updatedAt as string) || new Date().toISOString(),
-  };
-}
-
 export function CallDetailsModal({
   call: initialCall,
   onClose,
@@ -65,25 +35,31 @@ export function CallDetailsModal({
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [call, setCall] = useState<Call>(initialCall);
 
-  // Real-time listener for this specific call
-  useEffect(() => {
-    const callRef = doc(db, 'calls', initialCall.id);
-
-    const unsubscribe = onSnapshot(
-      callRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const updatedCall = docToCall(snapshot.id, snapshot.data() as Record<string, unknown>);
-          setCall(updatedCall);
+  // Fetch call updates (polling for in-progress calls)
+  const fetchCallUpdate = useCallback(async () => {
+    try {
+      const response = await authenticatedFetch(`/api/calls/${initialCall.id}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.call) {
+          setCall(result.call);
         }
-      },
-      (err) => {
-        console.error('Error listening to call updates:', err);
       }
-    );
-
-    return () => unsubscribe();
+    } catch (err) {
+      console.error('Error fetching call update:', err);
+    }
   }, [initialCall.id]);
+
+  // Poll for updates when call is in progress
+  useEffect(() => {
+    // Only poll if call is in progress
+    if (call.status !== 'in_progress') {
+      return;
+    }
+
+    const pollInterval = setInterval(fetchCallUpdate, 3000);
+    return () => clearInterval(pollInterval);
+  }, [call.status, fetchCallUpdate]);
 
   // Auto-scroll to bottom when new transcript entries arrive
   useEffect(() => {

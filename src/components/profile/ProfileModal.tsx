@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, User, Loader2, Mail, Phone, Briefcase, Shield } from 'lucide-react';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { authenticatedFetch } from '@/lib/api/client';
 import { AvatarUpload } from './AvatarUpload';
 
 interface ProfileModalProps {
@@ -116,12 +115,23 @@ export function ProfileModal({ isOpen, onClose, onSuccess }: ProfileModalProps) 
       setError(null);
       setSuccessMessage(null);
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        displayName: trimmedName,
-        phone: trimmedPhone || null,
-        title: trimmedTitle || null,
-        updatedAt: Timestamp.now(),
+      const response = await authenticatedFetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          displayName: trimmedName,
+          phone: trimmedPhone || null,
+          title: trimmedTitle || null,
+        }),
       });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update profile');
+      }
 
       await refreshUser();
       setSuccessMessage('Profile updated successfully');
@@ -129,7 +139,7 @@ export function ProfileModal({ isOpen, onClose, onSuccess }: ProfileModalProps) 
       // Don't auto-close - let user see the success message and close manually
     } catch (err) {
       console.error('Error updating profile:', err);
-      setError('Failed to update profile. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
