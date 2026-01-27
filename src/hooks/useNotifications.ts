@@ -41,8 +41,18 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if Firestore is disabled (stubbed)
+  const isFirestoreDisabled = (db as any)?._stub === true;
+
   // Real-time listener for notifications
   useEffect(() => {
+    // If Firestore is disabled, return empty notifications
+    if (isFirestoreDisabled) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
     if (!user?.uid) {
       setNotifications([]);
       setLoading(false);
@@ -106,14 +116,14 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       setError('Failed to load notifications');
       setLoading(false);
     }
-  }, [user?.uid, limitCount, unreadOnly]);
+  }, [user?.uid, limitCount, unreadOnly, isFirestoreDisabled]);
 
   // Calculate unread count
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // Mark single notification as read
   const markAsRead = useCallback(async (notificationId: string) => {
-    if (!user?.uid) return;
+    if (isFirestoreDisabled || !user?.uid) return;
 
     try {
       const notificationRef = doc(db, 'notifications', notificationId);
@@ -124,11 +134,11 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       console.error('Error marking notification as read:', err);
       throw err;
     }
-  }, [user?.uid]);
+  }, [user?.uid, isFirestoreDisabled]);
 
   // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
-    if (!user?.uid) return;
+    if (isFirestoreDisabled || !user?.uid) return;
 
     try {
       const batch = writeBatch(db);
@@ -144,11 +154,11 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       console.error('Error marking all notifications as read:', err);
       throw err;
     }
-  }, [user?.uid, notifications]);
+  }, [user?.uid, notifications, isFirestoreDisabled]);
 
   // Delete single notification
   const deleteNotification = useCallback(async (notificationId: string) => {
-    if (!user?.uid) return;
+    if (isFirestoreDisabled || !user?.uid) return;
 
     try {
       const notificationRef = doc(db, 'notifications', notificationId);
@@ -157,11 +167,11 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       console.error('Error deleting notification:', err);
       throw err;
     }
-  }, [user?.uid]);
+  }, [user?.uid, isFirestoreDisabled]);
 
   // Delete all read notifications
   const deleteAllRead = useCallback(async () => {
-    if (!user?.uid) return;
+    if (isFirestoreDisabled || !user?.uid) return;
 
     try {
       const batch = writeBatch(db);
@@ -177,7 +187,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       console.error('Error deleting read notifications:', err);
       throw err;
     }
-  }, [user?.uid, notifications]);
+  }, [user?.uid, notifications, isFirestoreDisabled]);
 
   return {
     notifications,

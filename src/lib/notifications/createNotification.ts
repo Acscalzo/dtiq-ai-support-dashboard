@@ -1,141 +1,94 @@
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+/**
+ * Notification creation - DISABLED
+ *
+ * These functions are being migrated to PostgreSQL.
+ * They are stubbed out to prevent Firestore connection attempts.
+ */
+
 import { CreateNotificationInput, NotificationType } from '@/types/notifications';
 
 /**
- * Create a new notification in Firestore
+ * Create a new notification - DISABLED (migrating to PostgreSQL)
  */
-export async function createNotification(input: CreateNotificationInput): Promise<string> {
-  try {
-    const notificationsRef = collection(db, 'notifications');
-
-    const docRef = await addDoc(notificationsRef, {
-      userId: input.userId,
-      type: input.type,
-      title: input.title,
-      message: input.message,
-      actionUrl: input.actionUrl || null,
-      read: false,
-      createdAt: Timestamp.now(),
-    });
-
-    return docRef.id;
-  } catch (error) {
-    console.error('Error creating notification:', error);
-    throw error;
-  }
+export async function createNotification(_input: CreateNotificationInput): Promise<string> {
+  console.warn('[Firestore] createNotification is disabled - migrating to PostgreSQL');
+  return 'stub-notification-id';
 }
 
 /**
- * Create a notification for a new ticket
+ * Create a notification for a new ticket - DISABLED
  */
 export async function notifyNewTicket(
-  userId: string,
-  ticketId: string,
-  ticketSubject: string
+  _userId: string,
+  _ticketId: string,
+  _ticketSubject: string
 ): Promise<string> {
-  return createNotification({
-    userId,
-    type: 'new_ticket',
-    title: 'New Support Ticket',
-    message: `A new ticket has been created: "${ticketSubject}"`,
-    actionUrl: `/dashboard/tickets/${ticketId}`,
-  });
+  console.warn('[Firestore] notifyNewTicket is disabled - migrating to PostgreSQL');
+  return 'stub-notification-id';
 }
 
 /**
- * Create a notification for ticket assignment
+ * Create a notification for ticket assignment - DISABLED
  */
 export async function notifyTicketAssigned(
-  userId: string,
-  ticketId: string,
-  ticketSubject: string,
-  assignedBy?: string
+  _userId: string,
+  _ticketId: string,
+  _ticketSubject: string,
+  _assignedBy?: string
 ): Promise<string> {
-  return createNotification({
-    userId,
-    type: 'ticket_assigned',
-    title: 'Ticket Assigned to You',
-    message: assignedBy
-      ? `${assignedBy} assigned you to: "${ticketSubject}"`
-      : `You have been assigned to: "${ticketSubject}"`,
-    actionUrl: `/dashboard/tickets/${ticketId}`,
-  });
+  console.warn('[Firestore] notifyTicketAssigned is disabled - migrating to PostgreSQL');
+  return 'stub-notification-id';
 }
 
 /**
- * Create a notification for AI insights
+ * Create a notification for AI insights - DISABLED
  */
 export async function notifyAiInsight(
-  userId: string,
-  insightTitle: string,
-  insightSummary: string,
-  actionUrl?: string
+  _userId: string,
+  _insightTitle: string,
+  _insightSummary: string,
+  _actionUrl?: string
 ): Promise<string> {
-  return createNotification({
-    userId,
-    type: 'ai_insight',
-    title: insightTitle,
-    message: insightSummary,
-    actionUrl: actionUrl || '/dashboard/ai-insights',
-  });
+  console.warn('[Firestore] notifyAiInsight is disabled - migrating to PostgreSQL');
+  return 'stub-notification-id';
 }
 
 /**
- * Create a notification for mentions
+ * Create a notification for mentions - DISABLED
  */
 export async function notifyMention(
-  userId: string,
-  mentionedBy: string,
-  context: string,
-  actionUrl: string
+  _userId: string,
+  _mentionedBy: string,
+  _context: string,
+  _actionUrl: string
 ): Promise<string> {
-  return createNotification({
-    userId,
-    type: 'mention',
-    title: `${mentionedBy} mentioned you`,
-    message: context,
-    actionUrl,
-  });
+  console.warn('[Firestore] notifyMention is disabled - migrating to PostgreSQL');
+  return 'stub-notification-id';
 }
 
 /**
- * Create a system notification
+ * Create a system notification - DISABLED
  */
 export async function notifySystem(
-  userId: string,
-  title: string,
-  message: string,
-  actionUrl?: string
+  _userId: string,
+  _title: string,
+  _message: string,
+  _actionUrl?: string
 ): Promise<string> {
-  return createNotification({
-    userId,
-    type: 'system',
-    title,
-    message,
-    actionUrl,
-  });
+  console.warn('[Firestore] notifySystem is disabled - migrating to PostgreSQL');
+  return 'stub-notification-id';
 }
 
 /**
- * Create notifications for multiple users
+ * Create notifications for multiple users - DISABLED
  */
 export async function createBulkNotifications(
   userIds: string[],
-  type: NotificationType,
-  title: string,
-  message: string,
-  actionUrl?: string
+  _type: NotificationType,
+  _title: string,
+  _message: string,
+  _actionUrl?: string
 ): Promise<string[]> {
-  const promises = userIds.map((userId) =>
-    createNotification({
-      userId,
-      type,
-      title,
-      message,
-      actionUrl,
-    })
-  );
-
-  return Promise.all(promises);
+  console.warn('[Firestore] createBulkNotifications is disabled - migrating to PostgreSQL');
+  return userIds.map(() => 'stub-notification-id');
 }

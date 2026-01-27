@@ -22,7 +22,17 @@ export function useUserPreferences(): UseUserPreferencesReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if Firestore is disabled (stubbed)
+  const isFirestoreDisabled = (db as any)?._stub === true;
+
   const fetchPreferences = useCallback(async () => {
+    // If Firestore is disabled, use defaults
+    if (isFirestoreDisabled) {
+      setPreferences(defaultPreferences);
+      setLoading(false);
+      return;
+    }
+
     if (!user?.uid) {
       setLoading(false);
       return;
@@ -63,13 +73,19 @@ export function useUserPreferences(): UseUserPreferencesReturn {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, isFirestoreDisabled]);
 
   useEffect(() => {
     fetchPreferences();
   }, [fetchPreferences]);
 
   const updatePreferences = useCallback(async (updates: Partial<UserPreferences>) => {
+    if (isFirestoreDisabled) {
+      // Update local state only when Firestore is disabled
+      setPreferences(prev => ({ ...prev, ...updates, updatedAt: new Date().toISOString() }));
+      return;
+    }
+
     if (!user?.uid) {
       throw new Error('User not authenticated');
     }
@@ -93,9 +109,19 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setError('Failed to save preferences');
       throw err;
     }
-  }, [user?.uid]);
+  }, [user?.uid, isFirestoreDisabled]);
 
   const updateNotifications = useCallback(async (updates: Partial<UserPreferences['notifications']>) => {
+    if (isFirestoreDisabled) {
+      // Update local state only when Firestore is disabled
+      setPreferences(prev => ({
+        ...prev,
+        notifications: { ...prev.notifications, ...updates },
+        updatedAt: new Date().toISOString(),
+      }));
+      return;
+    }
+
     if (!user?.uid) {
       throw new Error('User not authenticated');
     }
@@ -124,9 +150,19 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setError('Failed to save notification preferences');
       throw err;
     }
-  }, [user?.uid, preferences.notifications]);
+  }, [user?.uid, preferences.notifications, isFirestoreDisabled]);
 
   const updateDisplay = useCallback(async (updates: Partial<UserPreferences['display']>) => {
+    if (isFirestoreDisabled) {
+      // Update local state only when Firestore is disabled
+      setPreferences(prev => ({
+        ...prev,
+        display: { ...prev.display, ...updates },
+        updatedAt: new Date().toISOString(),
+      }));
+      return;
+    }
+
     if (!user?.uid) {
       throw new Error('User not authenticated');
     }
@@ -155,7 +191,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setError('Failed to save display preferences');
       throw err;
     }
-  }, [user?.uid, preferences.display]);
+  }, [user?.uid, preferences.display, isFirestoreDisabled]);
 
   return {
     preferences,

@@ -1,92 +1,34 @@
-import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from './client';
+/**
+ * Firestore client operations - DISABLED
+ *
+ * These functions are being migrated to PostgreSQL.
+ * They are stubbed out to prevent Firestore connection attempts.
+ */
+
 import { UserProfile, UserRole } from '@/types/auth';
 
 /**
- * Get user profile from Firestore
+ * Get user profile - DISABLED (migrating to PostgreSQL)
  */
-export async function getUserProfile(uid: string): Promise<UserProfile | null> {
-  try {
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      return {
-        uid: data.uid,
-        email: data.email,
-        displayName: data.displayName,
-        role: data.role,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        photoURL: data.photoURL || null,
-        phone: data.phone || null,
-        title: data.title || null,
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    return null;
-  }
+export async function getUserProfile(_uid: string): Promise<UserProfile | null> {
+  console.warn('[Firestore] getUserProfile is disabled - migrating to PostgreSQL');
+  return null;
 }
 
 /**
- * Create user profile in Firestore
- * Assigns "admin" role if this is the first user, otherwise "agent"
+ * Create user profile - DISABLED (migrating to PostgreSQL)
  */
 export async function createUserProfile(
-  uid: string,
-  email: string,
-  displayName: string | null
+  _uid: string,
+  _email: string,
+  _displayName: string | null
 ): Promise<UserProfile> {
-  try {
-    // Check if this is the first user
-    const settingsDoc = await getDoc(doc(db, 'settings', 'app'));
-    const isFirstUser = !settingsDoc.exists() || !settingsDoc.data()?.firstUserCreated;
-
-    const role: UserRole = isFirstUser ? 'admin' : 'agent';
-    const now = Timestamp.now();
-
-    const userProfile: UserProfile = {
-      uid,
-      email,
-      displayName: displayName || email.split('@')[0],
-      role,
-      createdAt: now.toDate().toISOString(),
-      updatedAt: now.toDate().toISOString(),
-    };
-
-    // Create user document
-    await setDoc(doc(db, 'users', uid), {
-      ...userProfile,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Mark first user as created
-    if (isFirstUser) {
-      await setDoc(doc(db, 'settings', 'app'), {
-        firstUserCreated: true,
-      });
-    }
-
-    return userProfile;
-  } catch (error) {
-    console.error('Error creating user profile:', error);
-    throw error;
-  }
+  throw new Error('Firestore is disabled. createUserProfile is being migrated to PostgreSQL.');
 }
 
 /**
- * Update user role (admin only)
+ * Update user role - DISABLED (migrating to PostgreSQL)
  */
-export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
-  try {
-    await updateDoc(doc(db, 'users', uid), {
-      role,
-      updatedAt: Timestamp.now(),
-    });
-  } catch (error) {
-    console.error('Error updating user role:', error);
-    throw error;
-  }
+export async function updateUserRole(_uid: string, _role: UserRole): Promise<void> {
+  throw new Error('Firestore is disabled. updateUserRole is being migrated to PostgreSQL.');
 }

@@ -98,8 +98,18 @@ export function useCalls(): UseCallsResult {
   const [refreshKey, setRefreshKey] = useState(0);
   const { user } = useAuth();
 
+  // Check if Firestore is disabled (stubbed)
+  const isFirestoreDisabled = (db as any)?._stub === true;
+
   // Real-time listener for calls
   useEffect(() => {
+    // If Firestore is disabled, return empty calls
+    if (isFirestoreDisabled) {
+      setCalls([]);
+      setLoading(false);
+      return;
+    }
+
     if (!user?.uid) {
       setCalls([]);
       setLoading(false);
@@ -142,7 +152,7 @@ export function useCalls(): UseCallsResult {
       setError('Failed to load calls');
       setLoading(false);
     }
-  }, [user?.uid, refreshKey]);
+  }, [user?.uid, refreshKey, isFirestoreDisabled]);
 
   // Calculate stats from calls (memoized)
   const stats = useMemo(() => {
@@ -157,7 +167,7 @@ export function useCalls(): UseCallsResult {
 
   // Toggle handled status with optimistic update
   const toggleHandled = useCallback(async (callId: string) => {
-    if (!user) return;
+    if (isFirestoreDisabled || !user) return;
 
     // Find current call to get current handled state
     const call = calls.find(c => c.id === callId);
@@ -188,7 +198,7 @@ export function useCalls(): UseCallsResult {
         )
       );
     }
-  }, [user, calls]);
+  }, [user, calls, isFirestoreDisabled]);
 
   return {
     calls,
