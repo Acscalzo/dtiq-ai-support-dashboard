@@ -1,69 +1,31 @@
 /**
  * Server-side company detection utilities.
  *
- * These functions use Next.js `headers()` and can only be called in:
- * - Server Components
- * - Route Handlers
- * - Server Actions
- *
- * For Client Components, use functions from `@/lib/config/company-client` instead.
+ * Company is determined by the COMPANY_SLUG environment variable,
+ * which should be set per deployment (e.g., "dtiq", "quilt", "welink").
  */
-
-import { headers } from 'next/headers'
 
 export const DEFAULT_COMPANY = 'dtiq'
 export const DEFAULT_COMPANY_UPPER = 'DTIQ'
 
 /**
- * Gets the current company slug from the request headers.
+ * Gets the current company slug from the COMPANY_SLUG environment variable.
  *
- * @returns The lowercase company slug (e.g., "dtiq", "qwilt")
+ * @returns The lowercase company slug (e.g., "dtiq", "quilt")
  * @default "dtiq"
- *
- * @remarks
- * This function uses Next.js `headers()` and can only be called in:
- * - Server Components
- * - Route Handlers
- * - Server Actions
- *
- * For Client Components, use `getClientCompany()` from `@/lib/config/company-client`.
- *
- * @example
- * ```tsx
- * // In a Server Component
- * import { getCompany } from '@/lib/config/company'
- *
- * export default function Page() {
- *   const company = getCompany()
- *   return <div>Company: {company}</div>
- * }
- * ```
  */
 export function getCompany(): string {
-  try {
-    const headersList = headers()
-    return headersList.get('x-company') || DEFAULT_COMPANY
-  } catch {
-    // headers() throws when called outside of a request context
-    // (e.g., during static generation or in client components)
-    return DEFAULT_COMPANY
-  }
+  return process.env.COMPANY_SLUG?.toLowerCase() || DEFAULT_COMPANY
 }
 
 /**
- * Gets the current company slug in uppercase from the request headers.
+ * Gets the current company slug in uppercase.
  *
- * @returns The uppercase company slug (e.g., "DTIQ", "QWILT")
+ * @returns The uppercase company slug (e.g., "DTIQ", "QUILT")
  * @default "DTIQ"
  */
 export function getCompanyUpper(): string {
-  try {
-    const headersList = headers()
-    return headersList.get('x-company-upper') || DEFAULT_COMPANY_UPPER
-  } catch {
-    // headers() throws when called outside of a request context
-    return DEFAULT_COMPANY_UPPER
-  }
+  return process.env.COMPANY_SLUG?.toUpperCase() || DEFAULT_COMPANY_UPPER
 }
 
 /**
