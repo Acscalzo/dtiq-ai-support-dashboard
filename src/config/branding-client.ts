@@ -51,7 +51,7 @@ export const brandingConfigs: Record<CompanySlug, BrandingConfig> = {
     primaryColor: '#8B5CF6',
     logoText: 'Q',
     tagline: 'Content Delivery Network',
-    logoUrl: '/quilt.png',
+    logoUrl: '/qwilt.png',
   },
   packetfabric: {
     companyName: 'PacketFabric',
